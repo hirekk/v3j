@@ -92,3 +92,4 @@ application-*.log
 # Data
 data
 !src/data/
+!test/data/
