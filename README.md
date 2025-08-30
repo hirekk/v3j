@@ -1,6 +1,6 @@
 # V3J - Octonion based neural network architecture (actually, only quaternions for now)
 
-A minimal Java project for generating N-dimensional XOR-style datasets using modern Java practices.
+A Java project for training a quaternion perceptron on XOR data.
 
 ## 📁 Structure
 
