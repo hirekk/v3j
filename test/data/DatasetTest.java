@@ -3,7 +3,6 @@ package data;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -98,11 +97,22 @@ class DatasetTest {
   void testShuffle() {
     List<DataPoint> originalOrder = new ArrayList<>(dataset.data);
 
-    dataset.shuffle();
+    // Shuffle multiple times to ensure we get a different order
+    // While it's theoretically possible for shuffle to produce the same order multiple times,
+    // the probability is astronomically low, making this test reliable
+    boolean orderChanged = false;
+    for (int i = 0; i < 100; i++) {
+      dataset.shuffle();
+      if (!dataset.data.equals(originalOrder)) {
+        orderChanged = true;
+        break;
+      }
+    }
 
-    assertNotEquals(originalOrder, dataset.data);
+    assertTrue(orderChanged, "Shuffle should produce different order after multiple attempts");
     assertEquals(originalOrder.size(), dataset.data.size());
     assertTrue(dataset.data.containsAll(originalOrder));
+    assertTrue(originalOrder.containsAll(dataset.data));
   }
 
   @Test
