@@ -122,4 +122,43 @@ public final class QuaternionPerceptron {
   public long getRandomSeed() {
     return random.nextLong(); // Note: This returns a new random value, not the original seed
   }
+
+  /**
+   * Performs the forward pass through the perceptron.
+   *
+   * <p>Applies the quaternion chain: bias * input * action, where:
+   *
+   * <ul>
+   *   <li><strong>Bias</strong> - Applied first as world-frame rotation
+   *   <li><strong>Input</strong> - The input orientation quaternion
+   *   <li><strong>Action</strong> - Applied last as local-frame rotation
+   * </ul>
+   *
+   * <p>This method assumes the input is a single quaternion representing an orientation.
+   *
+   * @param input the input orientation quaternion (must be a unit quaternion)
+   * @return the transformed orientation quaternion
+   * @throws IllegalArgumentException if input is null or not a unit quaternion
+   */
+  public Quaternion forward(Quaternion input) {
+    if (input == null) {
+      throw new IllegalArgumentException("Input quaternion cannot be null");
+    }
+
+    if (!input.isUnit()) {
+      throw new IllegalArgumentException("Input quaternion must be a unit quaternion");
+    }
+
+    // Apply the quaternion chain: bias * input * action
+    // This represents the composition of three rotations
+    Quaternion intermediate = bias.multiply(input);
+    Quaternion output = intermediate.multiply(action);
+
+    // The result should automatically be a unit quaternion since:
+    // - bias is unit (initialized and maintained as unit)
+    // - input is unit (validated above)
+    // - action is unit (initialized and maintained as unit)
+    // - Quaternion multiplication preserves unit length
+    return output;
+  }
 }

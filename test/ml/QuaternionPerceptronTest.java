@@ -196,4 +196,95 @@ class QuaternionPerceptronTest {
       assertTrue(action.isUnit());
     }
   }
+
+  @Nested
+  @DisplayName("Forward Pass")
+  class ForwardPassTests {
+
+    private QuaternionPerceptron perceptron;
+
+    @BeforeEach
+    void setUp() {
+      perceptron = new QuaternionPerceptron(0.01, 42L);
+    }
+
+    @Test
+    @DisplayName("Forward pass with valid unit quaternion input")
+    void testForwardWithValidInput() {
+      // Create a simple unit quaternion input (rotation around Z-axis)
+      Quaternion input = Quaternion.fromAxisAngle(Math.PI / 4, new double[] {0, 0, 1});
+
+      // Ensure input is unit
+      assertTrue(input.isUnit(), "Input should be a unit quaternion");
+
+      // Perform forward pass
+      Quaternion output = perceptron.forward(input);
+
+      // Output should be a unit quaternion
+      assertNotNull(output);
+      assertTrue(output.isUnit(), "Output should be a unit quaternion");
+
+      // Output should be different from input (weights should transform it)
+      assertNotEquals(input, output);
+    }
+
+    @Test
+    @DisplayName("Forward pass preserves unit length")
+    void testForwardPreservesUnitLength() {
+      // Test with identity quaternion
+      Quaternion input = Quaternion.ONE;
+
+      Quaternion output = perceptron.forward(input);
+
+      // Output should be unit length
+      assertTrue(output.isUnit(), "Output should maintain unit length");
+
+      // Test with random unit quaternion
+      Quaternion randomInput = new Quaternion(0.5, 0.5, 0.5, 0.5).normalize();
+      assertTrue(randomInput.isUnit(), "Random input should be unit");
+
+      Quaternion randomOutput = perceptron.forward(randomInput);
+      assertTrue(randomOutput.isUnit(), "Random output should maintain unit length");
+    }
+
+    @Test
+    @DisplayName("Forward pass rejects null input")
+    void testForwardRejectsNullInput() {
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> perceptron.forward(null),
+          "Should reject null input");
+    }
+
+    @Test
+    @DisplayName("Forward pass rejects non-unit quaternion input")
+    void testForwardRejectsNonUnitInput() {
+      // Create a non-unit quaternion
+      Quaternion nonUnitInput = new Quaternion(2.0, 1.0, 1.0, 1.0);
+      assertFalse(nonUnitInput.isUnit(), "Input should not be unit");
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> perceptron.forward(nonUnitInput),
+          "Should reject non-unit quaternion input");
+    }
+
+    @Test
+    @DisplayName("Forward pass applies bias and action weights")
+    void testForwardAppliesWeights() {
+      // Create a simple input
+      Quaternion input = Quaternion.ONE;
+
+      // Get current weights
+      Quaternion bias = perceptron.getBias();
+      Quaternion action = perceptron.getAction();
+
+      // Perform forward pass
+      Quaternion output = perceptron.forward(input);
+
+      // Output should equal bias * input * action
+      Quaternion expected = bias.multiply(input).multiply(action);
+      assertEquals(expected, output, "Forward pass should equal bias * input * action");
+    }
+  }
 }
