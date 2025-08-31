@@ -2,7 +2,7 @@
 
 ## Octonion-based neural network architecture
 
-An attempt to train octonion-valued neural network without backpropagation...
+An attempt to train octonion-valued neural network without backpropagation (and perhaps arbitrary activation function?)...
 
 - ... but it's actually quaternions--for now.
 - aaand it doesn't really work... (for now?)
