@@ -300,14 +300,11 @@ class FuzzyXorStrategyTest {
   class MathematicalCorrectnessTests {
 
     @Test
-    @DisplayName("Point cloud creation with matching dimensions")
-    void testPointCloudCreation() {
-      double[] mean = {0.0, 1.0, 0.5};
+    @DisplayName("3D dataset generation with matching variance dimensions")
+    void test3DDatasetGeneration() {
       double[] variance = {0.1, 0.2, 0.3};
       int cardinality = 15;
 
-      // This would require making the method public or using reflection
-      // For now, we test through the public interface
       FuzzyXorStrategy testStrategy = new FuzzyXorStrategy(cardinality, variance, 42L);
       List<DataPoint> dataset = testStrategy.generateDataset(3);
 
@@ -318,6 +315,9 @@ class FuzzyXorStrategyTest {
       for (DataPoint point : dataset) {
         assertEquals(3, point.getNumDimensions());
       }
+
+      // Verify that variance array dimension matches dataset dimension
+      assertEquals(variance.length, 3, "Variance array should have 3 dimensions for 3D dataset");
     }
 
     @Test

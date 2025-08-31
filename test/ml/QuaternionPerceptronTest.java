@@ -6,17 +6,17 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import math.Quaternion;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import math.Quaternion;
 
 /**
  * Tests for {@link QuaternionPerceptron}.
  *
- * <p>
- * Tests cover initialization, attribute access, and basic functionality.
+ * <p>Tests cover initialization, attribute access, and basic functionality.
  */
 @DisplayName("QuaternionPerceptron")
 class QuaternionPerceptronTest {
@@ -75,10 +75,14 @@ class QuaternionPerceptronTest {
     @Test
     @DisplayName("Constructor rejects non-positive learning rate")
     void testConstructorRejectsNonPositiveLearningRate() {
-      assertThrows(IllegalArgumentException.class, () -> new QuaternionPerceptron(0.0, 42L),
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> new QuaternionPerceptron(0.0, 42L),
           "Should reject zero learning rate");
 
-      assertThrows(IllegalArgumentException.class, () -> new QuaternionPerceptron(-0.01, 42L),
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> new QuaternionPerceptron(-0.01, 42L),
           "Should reject negative learning rate");
     }
   }
@@ -136,9 +140,11 @@ class QuaternionPerceptronTest {
       }
 
       // Both weights should be near identity across multiple random initializations
-      assertTrue(biasNearIdentity,
+      assertTrue(
+          biasNearIdentity,
           "Bias should be near identity (distance < 0.05) across multiple attempts");
-      assertTrue(actionNearIdentity,
+      assertTrue(
+          actionNearIdentity,
           "Action should be near identity (distance < 0.05) across multiple attempts");
     }
 
