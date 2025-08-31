@@ -88,6 +88,7 @@ application-*.log
 
 # AI
 .claude
+.cursor
 
 # Data
 data
