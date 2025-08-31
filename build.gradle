@@ -6,21 +6,17 @@ plugins {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_24
+    targetCompatibility = JavaVersion.VERSION_24
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(24)
+    }
 }
 
+// Modern source set configuration
 sourceSets {
-    main {
-        java {
-            srcDirs = ['src']
-        }
-    }
-    test {
-        java {
-            srcDirs = ['test']
-        }
-    }
+    main.java.srcDirs = ['src']
+    test.java.srcDirs = ['test']
 }
 
 repositories {
@@ -40,14 +36,20 @@ application {
 
 test {
     useJUnitPlatform()
+    
+    // Show test results with summary
     testLogging {
-        events "passed", "skipped", "failed"
+        events = ["failed"]
+        exceptionFormat = "full"
+        showStackTraces = true
+        showStandardStreams = false
     }
 }
 
-tasks.withType(JavaCompile) {
+// Modern task configuration
+tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.compilerArgs += ['-Xlint:unchecked', '-Xlint:deprecation']
+    options.compilerArgs += ['-Xlint:unchecked']
 }
 
 spotless {
@@ -59,7 +61,6 @@ spotless {
     }
 }
 
-// Minimal JaCoCo for GitHub coverage badge
 jacocoTestReport {
     reports {
         xml.required = true
@@ -68,4 +69,3 @@ jacocoTestReport {
 }
 
 test.finalizedBy jacocoTestReport
-
