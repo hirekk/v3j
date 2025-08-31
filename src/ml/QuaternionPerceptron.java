@@ -169,6 +169,31 @@ public final class QuaternionPerceptron {
   }
 
   /**
+   * Classifies an input by converting the predicted quaternion to a binary label.
+   *
+   * <p>Compares the predicted quaternion to the representations of 0 and 1 target quaternions and
+   * assigns the label based on minimum distance.
+   *
+   * @param inputOrientation the input orientation quaternion
+   * @return the predicted binary label (0 or 1)
+   */
+  public int classify(Quaternion inputOrientation) {
+    Quaternion predicted = forward(inputOrientation);
+
+    // Use existing method to get target quaternion representations
+    Quaternion target0 = labelToTargetOrientation(0);
+    Quaternion target1 = labelToTargetOrientation(1);
+
+    // Compute geodesic distances along great circles on S³
+    // The geodesic distance is the angle between quaternions
+    double distanceTo0 = predicted.geodesicDistance(target0);
+    double distanceTo1 = predicted.geodesicDistance(target1);
+
+    // Return the label with minimum distance
+    return (distanceTo0 <= distanceTo1) ? 0 : 1;
+  }
+
+  /**
    * Performs a single training step using the provided batch of inputs and targets.
    *
    * @param inputOrientations the input orientations
@@ -239,14 +264,26 @@ public final class QuaternionPerceptron {
    * @param gradientFields the gradient fields for both bias and action rotations
    */
   private void updateRotations(GradientFields gradientFields) {
-    // TODO: Implement exponential map update
-    // biasRotation *= exp(learningRate * gradientFields.biasGradient)
-    // actionRotation *= exp(learningRate * gradientFields.actionGradient)
+    // Update bias rotation (world frame) - left multiplication
+    double[] biasVector = gradientFields.biasGradient.toRotationVector();
+    for (int i = 0; i < 3; i++) {
+      biasVector[i] *= learningRate;
+    }
+    Quaternion biasUpdate = Quaternion.fromRotationVector(biasVector);
+    biasRotation = biasUpdate.multiply(biasRotation);
+
+    // Update action rotation (local frame) - right multiplication
+    double[] actionVector = gradientFields.actionGradient.toRotationVector();
+    for (int i = 0; i < 3; i++) {
+      actionVector[i] *= learningRate;
+    }
+    Quaternion actionUpdate = Quaternion.fromRotationVector(actionVector);
+    actionRotation = actionRotation.multiply(actionUpdate);
   }
 
   /**
    * Aggregates a list of rotations using exponential map summation. This method converts rotations
-   * to rotation vectors (tangent space), sums them, then maps back to the quaternion group via
+   * to their logarithms (tangent space), sums them, then maps back to the quaternion group via
    * exponential map.
    *
    * @param rotations the list of rotations to aggregate
@@ -260,20 +297,19 @@ public final class QuaternionPerceptron {
       return rotations.get(0);
     }
 
-    // Convert rotations to rotation vectors (tangent space)
-    double[] avgVector = {0.0, 0.0, 0.0};
+    // Convert rotations to rotation vectors (tangent space) using log
+    double[] sumVector = {0.0, 0.0, 0.0};
     for (Quaternion q : rotations) {
-      double[] v = q.toRotationVector();
+      Quaternion logQ = q.log(); // Use log() to get to tangent space
+      double[] v = logQ.getVector(); // Get vector part of log
       for (int i = 0; i < 3; i++) {
-        avgVector[i] += v[i];
+        sumVector[i] += v[i]; // SUM, not average
       }
     }
 
-    // Sum the rotation vectors (no division by batch size)
-    // This maintains the magnitude scaling with batch size, similar to gradient accumulation
-
-    // Map back to quaternion group via exponential map
-    return Quaternion.fromRotationVector(avgVector);
+    // Create quaternion from summed vector and apply exponential map
+    Quaternion sumLog = new Quaternion(0.0, sumVector[0], sumVector[1], sumVector[2]);
+    return sumLog.exp(); // Use exp() method for exponential map
   }
 
   /**

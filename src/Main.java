@@ -1,10 +1,14 @@
-package data;
-
+import data.Dataset;
+import data.DatasetGenerator;
 import data.strategy.ExactXorStrategy;
 import data.strategy.FuzzyXorStrategy;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+import math.Quaternion;
+import ml.QuaternionPerceptron;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -23,9 +27,9 @@ import picocli.CommandLine.Option;
  * @see FuzzyCommand
  */
 @Command(
-    name = "xor-generator",
+    name = "v3j",
     mixinStandardHelpOptions = true,
-    subcommands = {ExactCommand.class, FuzzyCommand.class})
+    subcommands = {GenerateCommand.class, TrainCommand.class})
 public class Main {
 
   /**
@@ -39,6 +43,21 @@ public class Main {
   public static void main(String[] args) {
     int exitCode = new CommandLine(new Main()).execute(args);
     System.exit(exitCode);
+  }
+}
+
+/** Command for generating XOR datasets. */
+@Command(
+    name = "generate",
+    mixinStandardHelpOptions = true,
+    description = "Generate XOR dataset",
+    subcommands = {ExactCommand.class, FuzzyCommand.class})
+class GenerateCommand implements Runnable {
+
+  @Override
+  public void run() {
+    // This command just shows help for its subcommands
+    System.out.println("Use 'v3j generate exact' or 'v3j generate fuzzy' to generate datasets.");
   }
 }
 
@@ -170,5 +189,105 @@ class FuzzyCommand implements Runnable {
 
     System.out.printf(
         "Generated fuzzy XOR dataset with %d dimensions, saved to %s%n", numDimensions, outputPath);
+  }
+}
+
+/** Subcommand for training the QuaternionPerceptron on a dataset. */
+@Command(
+    name = "train",
+    mixinStandardHelpOptions = true,
+    description = "Train quaternion perceptron on dataset")
+class TrainCommand implements Runnable {
+
+  @Option(
+      names = {"--data", "-d"},
+      description = "Input dataset file path")
+  private String dataPath = "data/xor/exact2d.csv";
+
+  @Override
+  public void run() {
+    try {
+      trainModel(dataPath);
+    } catch (Exception e) {
+      System.err.printf("Error during training: %s%n", e.getMessage());
+      e.printStackTrace();
+      System.exit(1);
+    }
+  }
+
+  private void trainModel(String dataPath) throws Exception {
+    System.out.println("Loading dataset from CSV: " + dataPath);
+    Dataset dataset = Dataset.fromCsv(Path.of(dataPath));
+    System.out.println(
+        "Dataset loaded: "
+            + dataset.data.size()
+            + " samples, "
+            + dataset.numDimensions
+            + " dimensions");
+
+    List<Quaternion> inputOrientations =
+        dataset.data.stream()
+            .map(
+                dp -> {
+                  double x = dp.getCoordinate(0);
+                  double y = dp.getCoordinate(1);
+                  // Replace 0s with -1s and add z-offset to ensure distinct quaternion
+                  // representations
+                  double quatX = (Math.abs(x) < 1e-10) ? -1.0 : x;
+                  double quatY = (Math.abs(y) < 1e-10) ? -1.0 : y;
+
+                  // Create quaternion with w=0 to represent pure quaternions, then normalize
+                  return new Quaternion(0.0, quatX, quatY, 0.5).normalize();
+                })
+            .collect(Collectors.toList());
+
+    List<Integer> binaryLabels =
+        dataset.data.stream().map(dp -> dp.label()).collect(Collectors.toList());
+
+    System.out.println("Initializing QuaternionPerceptron...");
+    QuaternionPerceptron perceptron = new QuaternionPerceptron(0.1, 42L);
+
+    System.out.println("Initial bias rotation: " + perceptron.getBiasRotation());
+    System.out.println("Initial action rotation: " + perceptron.getActionRotation());
+
+    System.out.println("\nStarting training loop...");
+    int epochs = 100;
+
+    for (int epoch = 0; epoch < epochs; epoch++) {
+      dataset.shuffle();
+      perceptron.step(inputOrientations, binaryLabels);
+
+      if (epoch % 10 == 0) {
+        var gradientFields =
+            perceptron.computeGradientFields(
+                inputOrientations,
+                inputOrientations.stream().map(perceptron::forward).collect(Collectors.toList()),
+                binaryLabels.stream()
+                    .map(label -> new Quaternion(label == 1 ? 1.0 : -1.0, 0.0, 0.0, 0.0))
+                    .collect(Collectors.toList()));
+
+        double biasMagnitude = gradientFields.biasGradient.norm();
+        double actionMagnitude = gradientFields.actionGradient.norm();
+
+        System.out.printf(
+            "Epoch %3d: Bias gradient magnitude: %.6f, Action gradient magnitude: %.6f%n",
+            epoch, biasMagnitude, actionMagnitude);
+      }
+    }
+
+    System.out.println("\nTraining completed!");
+    System.out.println("Final bias rotation: " + perceptron.getBiasRotation());
+    System.out.println("Final action rotation: " + perceptron.getActionRotation());
+
+    System.out.println("\nTesting on first few samples:");
+    for (int i = 0; i < Math.min(5, inputOrientations.size()); i++) {
+      Quaternion input = inputOrientations.get(i);
+      int targetLabel = binaryLabels.get(i);
+      int predicted = perceptron.classify(input);
+
+      System.out.printf(
+          "Sample %d: Input=(%.2f, %.2f), Target=%d, Predicted=%d%n",
+          i, input.getX(), input.getY(), targetLabel, predicted);
+    }
   }
 }

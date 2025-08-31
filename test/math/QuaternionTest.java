@@ -705,24 +705,6 @@ class QuaternionTest {
     }
 
     @Test
-    @DisplayName("Euler angles construction")
-    void testFromEuler() {
-      Quaternion result = Quaternion.fromEuler(0.0, 0.0, 0.0);
-      assertEquals(1.0, result.getW(), EPSILON);
-      assertEquals(0.0, result.getX(), EPSILON);
-      assertEquals(0.0, result.getY(), EPSILON);
-      assertEquals(0.0, result.getZ(), EPSILON);
-    }
-
-    @Test
-    @DisplayName("Euler angles with 90-degree rotations")
-    void testFromEuler90Degrees() {
-      Quaternion result = Quaternion.fromEuler(Math.PI / 2, Math.PI / 2, Math.PI / 2);
-      assertNotNull(result);
-      assertTrue(Math.abs(result.norm() - 1.0) < EPSILON);
-    }
-
-    @Test
     @DisplayName("Rotation vector construction - zero rotation")
     void testFromRotationVectorZero() {
       double[] zeroVector = {0.0, 0.0, 0.0};

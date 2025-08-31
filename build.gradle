@@ -32,7 +32,7 @@ dependencies {
 }
 
 application {
-    mainClass = 'data.Main'
+    mainClass = 'Main'
 }
 
 test {
@@ -70,3 +70,21 @@ jacocoTestReport {
 }
 
 test.finalizedBy jacocoTestReport
+
+// Create executable JAR with dependencies
+jar {
+    archiveBaseName.set('v3j')
+    archiveClassifier.set('')
+    archiveVersion.set('')
+    manifest {
+        attributes 'Main-Class': 'Main'
+    }
+    
+    // Include all dependencies in the JAR
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    
+    // Avoid duplicate files
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

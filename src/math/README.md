@@ -26,7 +26,6 @@ Represents quaternions in the form w + xi + yj + zk where w, x, y, z are real nu
 ### Construction Methods
 
 - **Axis-Angle**: `fromAxisAngle(angle, axis)` for rotation quaternions
-- **Euler Angles**: `fromEuler(roll, pitch, yaw)` for orientation quaternions
 - **Interpolation**: `slerp(q1, q2, t)` for smooth quaternion interpolation
 
 ### Constants

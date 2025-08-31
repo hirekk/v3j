@@ -355,32 +355,6 @@ public final class Quaternion {
   }
 
   /**
-   * Creates a quaternion from Euler angles (roll, pitch, yaw).
-   *
-   * <p>The rotation order is ZYX (yaw, pitch, roll) which is commonly used in aerospace. All angles
-   * should be in radians.
-   *
-   * @param roll rotation around X-axis (roll) in radians
-   * @param pitch rotation around Y-axis (pitch) in radians
-   * @param yaw rotation around Z-axis (yaw) in radians
-   * @return a new quaternion representing the combined rotation
-   */
-  public static Quaternion fromEuler(double roll, double pitch, double yaw) {
-    double cy = Math.cos(yaw * 0.5);
-    double sy = Math.sin(yaw * 0.5);
-    double cp = Math.cos(pitch * 0.5);
-    double sp = Math.sin(pitch * 0.5);
-    double cr = Math.cos(roll * 0.5);
-    double sr = Math.sin(roll * 0.5);
-
-    return new Quaternion(
-        cr * cp * cy + sr * sp * sy,
-        sr * cp * cy - cr * sp * sy,
-        cr * sp * cy + sr * cp * sy,
-        cr * cp * sy - sr * sp * cy);
-  }
-
-  /**
    * Creates a quaternion from a rotation vector representation.
    *
    * <p>A rotation vector is a 3D vector where the direction represents the rotation axis and the
@@ -439,6 +413,35 @@ public final class Quaternion {
 
     // The rotation we want is: this^(-1) * target
     return this.inverse().multiply(target);
+  }
+
+  /**
+   * Computes the geodesic distance between this quaternion and another along the great circle on
+   * S³.
+   *
+   * <p>The geodesic distance is the angle between the quaternions, computed using the dot product.
+   * For unit quaternions, this represents the shortest angular distance on the 4D unit sphere.
+   *
+   * @param other the other quaternion
+   * @return the geodesic distance in radians
+   * @throws IllegalArgumentException if other is null or either quaternion is not normalized
+   */
+  public double geodesicDistance(Quaternion other) {
+    if (other == null) {
+      throw new IllegalArgumentException("Other quaternion cannot be null");
+    }
+    if (!this.isUnit() || !other.isUnit()) {
+      throw new IllegalArgumentException("Both quaternions must be normalized (unit quaternions)");
+    }
+
+    // For unit quaternions, the geodesic distance is 2 * arccos(|this · other|)
+    // where · is the dot product
+    double dotProduct = Math.abs(this.dot(other));
+
+    // Clamp to [0, 1] to avoid numerical issues
+    dotProduct = Math.max(0.0, Math.min(1.0, dotProduct));
+
+    return 2.0 * Math.acos(dotProduct);
   }
 
   /**
