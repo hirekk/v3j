@@ -1,4 +1,6 @@
-# V3J - Octonion neural network architecture (actually, only quaternions for now)
+# V3J - VIII in Java
+
+## Octonion-based neural network architecture
 
 An attempt to train octonion-valued neural network without backpropagation...
 

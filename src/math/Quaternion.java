@@ -636,6 +636,11 @@ public final class Quaternion {
    * @return the rotation vector as a 3D array [x, y, z]
    */
   public double[] toRotationVector() {
+    if (!isUnit()) {
+      throw new IllegalStateException(
+          "Quaternion must be normalized for rotation vector conversion");
+    }
+
     // For unit quaternions, the rotation angle is 2*acos(w)
     double w = this.w;
     double[] vector = getVector();

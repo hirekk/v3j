@@ -1,7 +1,6 @@
 package ml;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -258,6 +257,7 @@ public final class QuaternionPerceptron {
     return new GradientFields(aggregatedBiasGradient, aggregatedActionGradient);
   }
 
+  // TODO: early stopping
   /**
    * Updates the rotations using the computed gradient fields via exponential map.
    *
@@ -316,6 +316,9 @@ public final class QuaternionPerceptron {
    * Decomposes the error rotation into bias, residual, and action components. This is the full
    * implementation matching the Python decompose_update method.
    *
+   * <p>When the basis vectors are linearly dependent, returns identity rotations (no updates)
+   * instead of failing the training step.
+   *
    * @param errorRotation the error rotation to decompose
    * @param input the input orientation
    * @return a DecompositionResult containing the three update components
@@ -330,17 +333,24 @@ public final class QuaternionPerceptron {
     // Form a basis from the vectors v_b, v_k, and v_a
     double[][] basis = {vBias, vInput, vAction};
 
-    // Check if basis is linearly independent and solve for coefficients
-    double[] coefficients = solveLinearSystem3x3(basis, vError);
+    try {
+      // Check if basis is linearly independent and solve for coefficients
+      double[] coefficients = solveLinearSystem3x3(basis, vError);
 
-    // Project error components back into quaternion space using quaternion exponentiation
-    Quaternion biasUpdate = computeBiasUpdate(coefficients, input, errorRotation);
-    Quaternion residualUpdate = computeResidualUpdate(coefficients, errorRotation);
-    Quaternion actionUpdate = computeActionUpdate(coefficients, input, errorRotation);
+      // Project error components back into quaternion space using quaternion exponentiation
+      Quaternion biasUpdate = computeBiasUpdate(coefficients, input, errorRotation);
+      Quaternion residualUpdate = computeResidualUpdate(coefficients, errorRotation);
+      Quaternion actionUpdate = computeActionUpdate(coefficients, input, errorRotation);
 
-    return new DecompositionResult(biasUpdate, residualUpdate, actionUpdate);
+      return new DecompositionResult(biasUpdate, residualUpdate, actionUpdate);
+    } catch (SingularMatrixException e) {
+      // When basis vectors are linearly dependent, return identity rotations (no updates)
+      // This gracefully handles the mathematical limitation without failing the training step
+      return new DecompositionResult(Quaternion.ONE, Quaternion.ONE, Quaternion.ONE);
+    }
   }
 
+  // TODO: this isn't right
   /** Computes the bias update component from the decomposition coefficients. */
   private Quaternion computeBiasUpdate(
       double[] coefficients, Quaternion input, Quaternion errorRotation) {
@@ -412,26 +422,22 @@ public final class QuaternionPerceptron {
    * @param A the coefficient matrix (3x3)
    * @param b the right-hand side vector (3 elements)
    * @return the solution vector x
+   * @throws SingularMatrixException if the basis vectors are linearly dependent
    */
   private double[] solveLinearSystem3x3(double[][] A, double[] b) {
     if (A.length != 3 || A[0].length != 3 || b.length != 3) {
       throw new IllegalArgumentException("Matrix A must be 3x3 and vector b must have 3 elements");
     }
 
-    try {
-      // Create RealMatrix and RealVector from arrays
-      RealMatrix matrix = new Array2DRowRealMatrix(A);
-      RealVector vector = new ArrayRealVector(b);
+    // Create RealMatrix and RealVector from arrays
+    RealMatrix matrix = new Array2DRowRealMatrix(A);
+    RealVector vector = new ArrayRealVector(b);
 
-      // Use LU decomposition for solving
-      DecompositionSolver solver = new LUDecomposition(matrix).getSolver();
-      RealVector solution = solver.solve(vector);
+    // Use LU decomposition for solving
+    DecompositionSolver solver = new LUDecomposition(matrix).getSolver();
+    RealVector solution = solver.solve(vector);
 
-      return solution.toArray();
-    } catch (SingularMatrixException e) {
-      throw new IllegalStateException(
-          "Basis vectors are linearly dependent: " + Arrays.deepToString(A), e);
-    }
+    return solution.toArray();
   }
 
   /**
