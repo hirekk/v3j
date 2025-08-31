@@ -5,7 +5,7 @@ An attempt to train octonion-valued neural network without backpropagation...
 - ... but it's actually quaternions--for now.
 - aaand it doesn't really work... (for now?)
 
-[![codecov](https://codecov.io/gh/hkubica/v3j/branch/main/graph/badge.svg)](https://github.com/hkubica/v3j)
+[![codecov](https://codecov.io/github/hirekk/v3j/branch/main/graph/badge.svg?token=QD3MLN3EF1)](https://codecov.io/github/hirekk/v3j)
 
 ## The idea
 
