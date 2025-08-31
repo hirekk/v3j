@@ -324,6 +324,160 @@ public final class Quaternion {
   }
 
   /**
+   * Creates a quaternion representing rotation around an axis.
+   *
+   * <p>The rotation is specified by an angle (in radians) and a 3D axis vector. The axis vector
+   * will be normalized automatically.
+   *
+   * @param angle the rotation angle in radians
+   * @param axis the 3D axis vector [x, y, z]
+   * @return a new quaternion representing the rotation
+   * @throws IllegalArgumentException if axis does not have exactly 3 components or is zero
+   */
+  public static Quaternion fromAxisAngle(double angle, double[] axis) {
+    if (axis.length != 3) {
+      throw new IllegalArgumentException("Axis must have exactly 3 components");
+    }
+
+    double norm = Math.sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
+    if (norm == 0.0) {
+      throw new IllegalArgumentException("Axis cannot be zero vector");
+    }
+
+    double halfAngle = angle / 2.0;
+    double sinHalfAngle = Math.sin(halfAngle);
+
+    return new Quaternion(
+        Math.cos(halfAngle),
+        axis[0] * sinHalfAngle / norm,
+        axis[1] * sinHalfAngle / norm,
+        axis[2] * sinHalfAngle / norm);
+  }
+
+  /**
+   * Creates a quaternion from Euler angles (roll, pitch, yaw).
+   *
+   * <p>The rotation order is ZYX (yaw, pitch, roll) which is commonly used in aerospace. All angles
+   * should be in radians.
+   *
+   * @param roll rotation around X-axis (roll) in radians
+   * @param pitch rotation around Y-axis (pitch) in radians
+   * @param yaw rotation around Z-axis (yaw) in radians
+   * @return a new quaternion representing the combined rotation
+   */
+  public static Quaternion fromEuler(double roll, double pitch, double yaw) {
+    double cy = Math.cos(yaw * 0.5);
+    double sy = Math.sin(yaw * 0.5);
+    double cp = Math.cos(pitch * 0.5);
+    double sp = Math.sin(pitch * 0.5);
+    double cr = Math.cos(roll * 0.5);
+    double sr = Math.sin(roll * 0.5);
+
+    return new Quaternion(
+        cr * cp * cy + sr * sp * sy,
+        sr * cp * cy - cr * sp * sy,
+        cr * sp * cy + sr * cp * sy,
+        cr * cp * sy - sr * sp * cy);
+  }
+
+  /**
+   * Creates a quaternion from a rotation vector representation.
+   *
+   * <p>A rotation vector is a 3D vector where the direction represents the rotation axis and the
+   * magnitude represents the rotation angle. This is the inverse operation of toRotationVector().
+   *
+   * @param rotationVector the rotation vector as a 3D array [x, y, z]
+   * @return a quaternion representing the rotation
+   * @throws IllegalArgumentException if rotationVector does not have exactly 3 components
+   */
+  public static Quaternion fromRotationVector(double[] rotationVector) {
+    if (rotationVector.length != 3) {
+      throw new IllegalArgumentException("Rotation vector must have exactly 3 components");
+    }
+
+    // Extract angle and axis from the rotation vector
+    double angle =
+        Math.sqrt(
+            rotationVector[0] * rotationVector[0]
+                + rotationVector[1] * rotationVector[1]
+                + rotationVector[2] * rotationVector[2]);
+
+    // Handle very small rotations (return identity)
+    if (angle < 1e-10) {
+      return Quaternion.ONE;
+    }
+
+    // Normalize the axis
+    double[] axis = {
+      rotationVector[0] / angle, rotationVector[1] / angle, rotationVector[2] / angle
+    };
+
+    // Create quaternion using axis-angle representation
+    return fromAxisAngle(angle, axis);
+  }
+
+  /**
+   * Computes the geodesic rotation from this quaternion to the target quaternion.
+   *
+   * <p>This method computes the rotation quaternion that transforms this quaternion to the target
+   * quaternion. The result represents the shortest rotation path on the 4D unit sphere.
+   *
+   * <p>Mathematically, if this = q₁ and target = q₂, then the result r satisfies: q₁ * r = q₂,
+   * which means r = q₁^(-1) * q₂
+   *
+   * @param target the target quaternion
+   * @return a quaternion representing the rotation from this quaternion to target
+   * @throws IllegalArgumentException if target is null or either quaternion is not normalized
+   */
+  public Quaternion geodesicRotation(Quaternion target) {
+    if (target == null) {
+      throw new IllegalArgumentException("Target quaternion cannot be null");
+    }
+    if (!this.isUnit() || !target.isUnit()) {
+      throw new IllegalArgumentException("Both quaternions must be normalized (unit quaternions)");
+    }
+
+    // The rotation we want is: this^(-1) * target
+    return this.inverse().multiply(target);
+  }
+
+  /**
+   * Performs spherical linear interpolation (SLERP) between two quaternions.
+   *
+   * <p>SLERP provides smooth interpolation between two rotations, following the shortest arc on the
+   * 4D unit sphere. The interpolation parameter t should be in [0, 1].
+   *
+   * @param q1 the first quaternion
+   * @param q2 the second quaternion
+   * @param t the interpolation parameter (0.0 = q1, 1.0 = q2)
+   * @return a new quaternion interpolated between q1 and q2
+   * @throws IllegalArgumentException if t is not in [0, 1]
+   */
+  public static Quaternion slerp(Quaternion q1, Quaternion q2, double t) {
+    if (t < 0.0 || t > 1.0) {
+      throw new IllegalArgumentException("Interpolation parameter must be in [0, 1]");
+    }
+
+    double dot = q1.dot(q2);
+    Quaternion q2Adjusted = q2;
+
+    if (dot < 0.0) {
+      q2Adjusted = q2.negate();
+      dot = -dot;
+    }
+
+    if (dot > 0.9995) {
+      return q1.add(q2Adjusted.subtract(q1).multiply(t)).normalize();
+    }
+
+    double theta = Math.acos(dot);
+    double sinTheta = Math.sin(theta);
+
+    return q1.multiply(Math.sin((1 - t) * theta) / sinTheta)
+        .add(q2Adjusted.multiply(Math.sin(t * theta) / sinTheta));
+  }
+
+  /**
    * Computes the exponential of this quaternion.
    *
    * <p>For a quaternion q = w + v where v is the vector part: e^q = e^w * (cos(|v|) + v/|v| *
@@ -439,99 +593,6 @@ public final class Quaternion {
   }
 
   /**
-   * Creates a quaternion representing rotation around an axis.
-   *
-   * <p>The rotation is specified by an angle (in radians) and a 3D axis vector. The axis vector
-   * will be normalized automatically.
-   *
-   * @param angle the rotation angle in radians
-   * @param axis the 3D axis vector [x, y, z]
-   * @return a new quaternion representing the rotation
-   * @throws IllegalArgumentException if axis does not have exactly 3 components or is zero
-   */
-  public static Quaternion fromAxisAngle(double angle, double[] axis) {
-    if (axis.length != 3) {
-      throw new IllegalArgumentException("Axis must have exactly 3 components");
-    }
-
-    double norm = Math.sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
-    if (norm == 0.0) {
-      throw new IllegalArgumentException("Axis cannot be zero vector");
-    }
-
-    double halfAngle = angle / 2.0;
-    double sinHalfAngle = Math.sin(halfAngle);
-
-    return new Quaternion(
-        Math.cos(halfAngle),
-        axis[0] * sinHalfAngle / norm,
-        axis[1] * sinHalfAngle / norm,
-        axis[2] * sinHalfAngle / norm);
-  }
-
-  /**
-   * Creates a quaternion from Euler angles (roll, pitch, yaw).
-   *
-   * <p>The rotation order is ZYX (yaw, pitch, roll) which is commonly used in aerospace. All angles
-   * should be in radians.
-   *
-   * @param roll rotation around X-axis (roll) in radians
-   * @param pitch rotation around Y-axis (pitch) in radians
-   * @param yaw rotation around Z-axis (yaw) in radians
-   * @return a new quaternion representing the combined rotation
-   */
-  public static Quaternion fromEuler(double roll, double pitch, double yaw) {
-    double cy = Math.cos(yaw * 0.5);
-    double sy = Math.sin(yaw * 0.5);
-    double cp = Math.cos(pitch * 0.5);
-    double sp = Math.sin(pitch * 0.5);
-    double cr = Math.cos(roll * 0.5);
-    double sr = Math.sin(roll * 0.5);
-
-    return new Quaternion(
-        cr * cp * cy + sr * sp * sy,
-        sr * cp * cy - cr * sp * sy,
-        cr * sp * cy + sr * cp * sy,
-        cr * cp * sy - sr * sp * cy);
-  }
-
-  /**
-   * Performs spherical linear interpolation (SLERP) between two quaternions.
-   *
-   * <p>SLERP provides smooth interpolation between two rotations, following the shortest arc on the
-   * 4D unit sphere. The interpolation parameter t should be in [0, 1].
-   *
-   * @param q1 the first quaternion
-   * @param q2 the second quaternion
-   * @param t the interpolation parameter (0.0 = q1, 1.0 = q2)
-   * @return a new quaternion interpolated between q1 and q2
-   * @throws IllegalArgumentException if t is not in [0, 1]
-   */
-  public static Quaternion slerp(Quaternion q1, Quaternion q2, double t) {
-    if (t < 0.0 || t > 1.0) {
-      throw new IllegalArgumentException("Interpolation parameter must be in [0, 1]");
-    }
-
-    double dot = q1.dot(q2);
-    Quaternion q2Adjusted = q2;
-
-    if (dot < 0.0) {
-      q2Adjusted = q2.negate();
-      dot = -dot;
-    }
-
-    if (dot > 0.9995) {
-      return q1.add(q2Adjusted.subtract(q1).multiply(t)).normalize();
-    }
-
-    double theta = Math.acos(dot);
-    double sinTheta = Math.sin(theta);
-
-    return q1.multiply(Math.sin((1 - t) * theta) / sinTheta)
-        .add(q2Adjusted.multiply(Math.sin(t * theta) / sinTheta));
-  }
-
-  /**
    * Checks if this quaternion equals another object.
    *
    * <p>Two quaternions are equal if all their components are equal. Uses Double.compare for proper
@@ -560,6 +621,40 @@ public final class Quaternion {
   @Override
   public int hashCode() {
     return Objects.hash(w, x, y, z);
+  }
+
+  /**
+   * Converts this quaternion to its rotation vector representation. This extracts the axis-angle
+   * representation and returns the axis scaled by the angle.
+   *
+   * <p>For unit quaternions, the rotation vector is the vector part scaled by 2*acos(w). This is
+   * useful for converting quaternions to 3D rotation vectors for mathematical operations.
+   *
+   * @return the rotation vector as a 3D array [x, y, z]
+   */
+  public double[] toRotationVector() {
+    // For unit quaternions, the rotation angle is 2*acos(w)
+    double w = this.w;
+    double[] vector = getVector();
+
+    // Handle the case where w is very close to 1 (small rotation)
+    if (Math.abs(w - 1.0) < 1e-10) {
+      return new double[] {0.0, 0.0, 0.0};
+    }
+
+    // Compute the rotation angle
+    double angle = 2.0 * Math.acos(Math.max(-1.0, Math.min(1.0, w)));
+
+    // Normalize the vector part and scale by angle
+    double vectorNorm =
+        Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]);
+    if (vectorNorm < 1e-10) {
+      return new double[] {0.0, 0.0, 0.0};
+    }
+
+    return new double[] {
+      angle * vector[0] / vectorNorm, angle * vector[1] / vectorNorm, angle * vector[2] / vectorNorm
+    };
   }
 
   /**

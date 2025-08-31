@@ -721,6 +721,219 @@ class QuaternionTest {
       assertNotNull(result);
       assertTrue(Math.abs(result.norm() - 1.0) < EPSILON);
     }
+
+    @Test
+    @DisplayName("Rotation vector construction - zero rotation")
+    void testFromRotationVectorZero() {
+      double[] zeroVector = {0.0, 0.0, 0.0};
+      Quaternion result = Quaternion.fromRotationVector(zeroVector);
+      assertEquals(Quaternion.ONE, result);
+    }
+
+    @Test
+    @DisplayName("Rotation vector construction - small rotation")
+    void testFromRotationVectorSmall() {
+      double[] smallVector = {0.1, 0.0, 0.0};
+      Quaternion result = Quaternion.fromRotationVector(smallVector);
+
+      // For small rotation of 0.1 radians around X-axis:
+      // w ≈ cos(0.05) ≈ 0.99875, x ≈ sin(0.05) ≈ 0.04998
+      assertEquals(0.99875, result.getW(), 0.01);
+      assertEquals(0.04998, result.getX(), 0.01);
+      assertEquals(0.0, result.getY(), 0.01);
+      assertEquals(0.0, result.getZ(), 0.01);
+
+      // Should be a unit quaternion
+      assertEquals(1.0, result.norm(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("Rotation vector construction - 90 degree rotation around X-axis")
+    void testFromRotationVector90DegreesX() {
+      double[] rotationVector = {Math.PI / 2, 0.0, 0.0};
+      Quaternion result = Quaternion.fromRotationVector(rotationVector);
+
+      // 90 degrees around X-axis should give cos(π/4) + sin(π/4)i
+      double expectedW = Math.cos(Math.PI / 4);
+      double expectedX = Math.sin(Math.PI / 4);
+
+      assertEquals(expectedW, result.getW(), EPSILON);
+      assertEquals(expectedX, result.getX(), EPSILON);
+      assertEquals(0.0, result.getY(), EPSILON);
+      assertEquals(0.0, result.getZ(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("Rotation vector construction - 180 degree rotation around Y-axis")
+    void testFromRotationVector180DegreesY() {
+      double[] rotationVector = {0.0, Math.PI, 0.0};
+      Quaternion result = Quaternion.fromRotationVector(rotationVector);
+
+      // 180 degrees around Y-axis should give cos(π/2) + sin(π/2)j = 0 + j
+      assertEquals(0.0, result.getW(), EPSILON);
+      assertEquals(0.0, result.getX(), EPSILON);
+      assertEquals(1.0, result.getY(), EPSILON);
+      assertEquals(0.0, result.getZ(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("Rotation vector construction - arbitrary rotation")
+    void testFromRotationVectorArbitrary() {
+      double[] rotationVector = {1.0, 2.0, 3.0};
+      Quaternion result = Quaternion.fromRotationVector(rotationVector);
+
+      // Should be a unit quaternion
+      assertEquals(1.0, result.norm(), EPSILON);
+
+      // Should not be identity for non-zero rotation
+      assertFalse(result.equals(Quaternion.ONE));
+    }
+
+    @Test
+    @DisplayName("Rotation vector construction - round trip with toRotationVector")
+    void testFromRotationVectorRoundTrip() {
+      // Create a quaternion from axis-angle
+      double[] axis = {1.0, 0.0, 0.0};
+      Quaternion original = Quaternion.fromAxisAngle(Math.PI / 3, axis);
+
+      // Convert to rotation vector
+      double[] rotationVector = original.toRotationVector();
+
+      // Convert back to quaternion
+      Quaternion reconstructed = Quaternion.fromRotationVector(rotationVector);
+
+      // Should be approximately equal (allowing for numerical precision)
+      assertEquals(original.getW(), reconstructed.getW(), EPSILON);
+      assertEquals(original.getX(), reconstructed.getX(), EPSILON);
+      assertEquals(original.getY(), reconstructed.getY(), EPSILON);
+      assertEquals(original.getZ(), reconstructed.getZ(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("Rotation vector construction - invalid length")
+    void testFromRotationVectorInvalidLength() {
+      double[] invalidVector = {1.0, 2.0};
+      assertThrows(
+          IllegalArgumentException.class, () -> Quaternion.fromRotationVector(invalidVector));
+    }
+
+    @Test
+    @DisplayName("Rotation vector construction - null input")
+    void testFromRotationVectorNull() {
+      assertThrows(NullPointerException.class, () -> Quaternion.fromRotationVector(null));
+    }
+  }
+
+  @Nested
+  @DisplayName("Conversion Method Tests")
+  class ConversionMethodTests {
+
+    @Test
+    @DisplayName("To rotation vector - identity quaternion")
+    void testToRotationVectorIdentity() {
+      double[] result = Quaternion.ONE.toRotationVector();
+      assertEquals(0.0, result[0], EPSILON);
+      assertEquals(0.0, result[1], EPSILON);
+      assertEquals(0.0, result[2], EPSILON);
+    }
+
+    @Test
+    @DisplayName("To rotation vector - 90 degree rotation around X-axis")
+    void testToRotationVector90DegreesX() {
+      Quaternion q = new Quaternion(Math.cos(Math.PI / 4), Math.sin(Math.PI / 4), 0.0, 0.0);
+      double[] result = q.toRotationVector();
+
+      // Should be approximately π/2 in X direction
+      assertEquals(Math.PI / 2, result[0], EPSILON);
+      assertEquals(0.0, result[1], EPSILON);
+      assertEquals(0.0, result[2], EPSILON);
+    }
+
+    @Test
+    @DisplayName("To rotation vector - 180 degree rotation around Y-axis")
+    void testToRotationVector180DegreesY() {
+      Quaternion q = new Quaternion(0.0, 0.0, 1.0, 0.0);
+      double[] result = q.toRotationVector();
+
+      // Should be approximately π in Y direction
+      assertEquals(0.0, result[0], EPSILON);
+      assertEquals(Math.PI, result[1], EPSILON);
+      assertEquals(0.0, result[2], EPSILON);
+    }
+
+    @Test
+    @DisplayName("To rotation vector - arbitrary rotation")
+    void testToRotationVectorArbitrary() {
+      // Create a quaternion from axis-angle
+      double[] axis = {1.0, 1.0, 1.0};
+      double angle = Math.PI / 3;
+      Quaternion q = Quaternion.fromAxisAngle(angle, axis);
+
+      double[] result = q.toRotationVector();
+
+      // Result should be a 3D vector
+      assertEquals(3, result.length);
+
+      // Magnitude should be approximately the angle
+      double magnitude =
+          Math.sqrt(result[0] * result[0] + result[1] * result[1] + result[2] * result[2]);
+      assertEquals(angle, magnitude, EPSILON);
+    }
+
+    @Test
+    @DisplayName("To rotation vector - very small rotation")
+    void testToRotationVectorSmallRotation() {
+      // Create a very small rotation
+      double[] axis = {1.0, 0.0, 0.0};
+      double angle = 1e-8;
+      Quaternion q = Quaternion.fromAxisAngle(angle, axis);
+
+      double[] result = q.toRotationVector();
+
+      // Should be approximately zero for very small rotations
+      assertEquals(0.0, result[0], 1e-6);
+      assertEquals(0.0, result[1], 1e-6);
+      assertEquals(0.0, result[2], 1e-6);
+    }
+
+    @Test
+    @DisplayName("To rotation matrix - identity quaternion")
+    void testToRotationMatrixIdentity() {
+      double[] matrix = Quaternion.ONE.toRotationMatrix();
+
+      // Should be 3x3 identity matrix
+      assertEquals(9, matrix.length);
+      assertEquals(1.0, matrix[0], EPSILON); // m11
+      assertEquals(0.0, matrix[1], EPSILON); // m12
+      assertEquals(0.0, matrix[2], EPSILON); // m13
+      assertEquals(0.0, matrix[3], EPSILON); // m21
+      assertEquals(1.0, matrix[4], EPSILON); // m22
+      assertEquals(0.0, matrix[5], EPSILON); // m23
+      assertEquals(0.0, matrix[6], EPSILON); // m31
+      assertEquals(0.0, matrix[7], EPSILON); // m32
+      assertEquals(1.0, matrix[8], EPSILON); // m33
+    }
+
+    @Test
+    @DisplayName("To rotation matrix - 90 degree rotation around Z-axis")
+    void testToRotationMatrix90DegreesZ() {
+      Quaternion q = new Quaternion(Math.cos(Math.PI / 4), 0.0, 0.0, Math.sin(Math.PI / 4));
+      double[] matrix = q.toRotationMatrix();
+
+      // Should be 3x3 rotation matrix
+      assertEquals(9, matrix.length);
+
+      // For 90° rotation around Z: cos(90°) = 0, sin(90°) = 1
+      assertEquals(0.0, matrix[0], EPSILON); // m11
+      assertEquals(-1.0, matrix[1], EPSILON); // m12
+      assertEquals(0.0, matrix[2], EPSILON); // m13
+      assertEquals(1.0, matrix[3], EPSILON); // m21
+      assertEquals(0.0, matrix[4], EPSILON); // m22
+      assertEquals(0.0, matrix[5], EPSILON); // m23
+      assertEquals(0.0, matrix[6], EPSILON); // m31
+      assertEquals(0.0, matrix[7], EPSILON); // m32
+      assertEquals(1.0, matrix[8], EPSILON); // m33
+    }
   }
 
   @Nested
@@ -779,6 +992,98 @@ class QuaternionTest {
       assertThrows(
           IllegalArgumentException.class,
           () -> Quaternion.slerp(Quaternion.ONE, Quaternion.I, -0.5));
+    }
+  }
+
+  @Nested
+  @DisplayName("Geodesic Rotation Tests")
+  class GeodesicRotationTests {
+
+    @Test
+    @DisplayName("Geodesic rotation - identity to identity")
+    void testGeodesicRotationIdentityToIdentity() {
+      Quaternion result = Quaternion.ONE.geodesicRotation(Quaternion.ONE);
+      assertEquals(Quaternion.ONE, result);
+    }
+
+    @Test
+    @DisplayName("Geodesic rotation - identity to 90 degree rotation")
+    void testGeodesicRotationIdentityTo90Degrees() {
+      Quaternion target = new Quaternion(Math.cos(Math.PI / 4), Math.sin(Math.PI / 4), 0.0, 0.0);
+      Quaternion result = Quaternion.ONE.geodesicRotation(target);
+
+      // Should be the same as the target since we're rotating from identity
+      assertEquals(target.getW(), result.getW(), EPSILON);
+      assertEquals(target.getX(), result.getX(), EPSILON);
+      assertEquals(target.getY(), result.getY(), EPSILON);
+      assertEquals(target.getZ(), result.getZ(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("Geodesic rotation - 90 degree to 180 degree rotation")
+    void testGeodesicRotation90To180Degrees() {
+      Quaternion source = new Quaternion(Math.cos(Math.PI / 4), Math.sin(Math.PI / 4), 0.0, 0.0);
+      Quaternion target = new Quaternion(0.0, 1.0, 0.0, 0.0); // 180 degrees around X
+
+      Quaternion result = source.geodesicRotation(target);
+
+      // Should be a 90 degree rotation around X-axis
+      double expectedW = Math.cos(Math.PI / 4);
+      double expectedX = Math.sin(Math.PI / 4);
+
+      assertEquals(expectedW, result.getW(), EPSILON);
+      assertEquals(expectedX, result.getX(), EPSILON);
+      assertEquals(0.0, result.getY(), EPSILON);
+      assertEquals(0.0, result.getZ(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("Geodesic rotation - round trip validation")
+    void testGeodesicRotationRoundTrip() {
+      Quaternion source = new Quaternion(Math.cos(Math.PI / 6), Math.sin(Math.PI / 6), 0.0, 0.0);
+      Quaternion target = new Quaternion(Math.cos(Math.PI / 3), 0.0, Math.sin(Math.PI / 3), 0.0);
+
+      Quaternion rotation = source.geodesicRotation(target);
+
+      // Apply the rotation to the source: source * rotation should equal target
+      Quaternion result = source.multiply(rotation);
+
+      assertEquals(target.getW(), result.getW(), EPSILON);
+      assertEquals(target.getX(), result.getX(), EPSILON);
+      assertEquals(target.getY(), result.getY(), EPSILON);
+      assertEquals(target.getZ(), result.getZ(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("Geodesic rotation - null target")
+    void testGeodesicRotationNullTarget() {
+      assertThrows(IllegalArgumentException.class, () -> Quaternion.ONE.geodesicRotation(null));
+    }
+
+    @Test
+    @DisplayName("Geodesic rotation - non-unit source")
+    void testGeodesicRotationNonUnitSource() {
+      Quaternion nonUnit = new Quaternion(2.0, 0.0, 0.0, 0.0);
+      assertThrows(IllegalArgumentException.class, () -> nonUnit.geodesicRotation(Quaternion.ONE));
+    }
+
+    @Test
+    @DisplayName("Geodesic rotation - non-unit target")
+    void testGeodesicRotationNonUnitTarget() {
+      Quaternion nonUnit = new Quaternion(2.0, 0.0, 0.0, 0.0);
+      assertThrows(IllegalArgumentException.class, () -> Quaternion.ONE.geodesicRotation(nonUnit));
+    }
+
+    @Test
+    @DisplayName("Geodesic rotation - result is unit quaternion")
+    void testGeodesicRotationResultIsUnit() {
+      Quaternion source = new Quaternion(Math.cos(Math.PI / 4), Math.sin(Math.PI / 4), 0.0, 0.0);
+      Quaternion target = new Quaternion(Math.cos(Math.PI / 3), 0.0, Math.sin(Math.PI / 3), 0.0);
+
+      Quaternion result = source.geodesicRotation(target);
+
+      // The result should be a unit quaternion
+      assertEquals(1.0, result.norm(), EPSILON);
     }
   }
 

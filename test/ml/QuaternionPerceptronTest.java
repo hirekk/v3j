@@ -33,8 +33,8 @@ class QuaternionPerceptronTest {
       QuaternionPerceptron perceptron = new QuaternionPerceptron();
 
       assertEquals(0.01, perceptron.getLearningRate(), EPSILON);
-      assertNotNull(perceptron.getBias());
-      assertNotNull(perceptron.getAction());
+      assertNotNull(perceptron.getBiasRotation());
+      assertNotNull(perceptron.getActionRotation());
     }
 
     @Test
@@ -46,8 +46,8 @@ class QuaternionPerceptronTest {
       QuaternionPerceptron perceptron = new QuaternionPerceptron(learningRate, randomSeed);
 
       assertEquals(learningRate, perceptron.getLearningRate(), EPSILON);
-      assertNotNull(perceptron.getBias());
-      assertNotNull(perceptron.getAction());
+      assertNotNull(perceptron.getBiasRotation());
+      assertNotNull(perceptron.getActionRotation());
     }
 
     @Test
@@ -58,8 +58,8 @@ class QuaternionPerceptronTest {
       QuaternionPerceptron perceptron1 = new QuaternionPerceptron(0.01, seed);
       QuaternionPerceptron perceptron2 = new QuaternionPerceptron(0.01, seed);
 
-      assertEquals(perceptron1.getBias(), perceptron2.getBias());
-      assertEquals(perceptron1.getAction(), perceptron2.getAction());
+      assertEquals(perceptron1.getBiasRotation(), perceptron2.getBiasRotation());
+      assertEquals(perceptron1.getActionRotation(), perceptron2.getActionRotation());
     }
 
     @Test
@@ -68,8 +68,8 @@ class QuaternionPerceptronTest {
       QuaternionPerceptron perceptron1 = new QuaternionPerceptron(0.01, 1L);
       QuaternionPerceptron perceptron2 = new QuaternionPerceptron(0.01, 2L);
 
-      assertNotEquals(perceptron1.getBias(), perceptron2.getBias());
-      assertNotEquals(perceptron1.getAction(), perceptron2.getAction());
+      assertNotEquals(perceptron1.getBiasRotation(), perceptron2.getBiasRotation());
+      assertNotEquals(perceptron1.getActionRotation(), perceptron2.getActionRotation());
     }
 
     @Test
@@ -96,8 +96,8 @@ class QuaternionPerceptronTest {
     void testWeightsAreValidUnitQuaternions() {
       QuaternionPerceptron perceptron = new QuaternionPerceptron(0.01, 42L);
 
-      Quaternion bias = perceptron.getBias();
-      Quaternion action = perceptron.getAction();
+      Quaternion bias = perceptron.getBiasRotation();
+      Quaternion action = perceptron.getActionRotation();
 
       // Check basic properties
       assertTrue(bias.isUnit(), "Bias should be a unit quaternion");
@@ -119,8 +119,8 @@ class QuaternionPerceptronTest {
       // Try up to 5 different random initializations to ensure robustness
       for (int attempt = 0; attempt < 5; attempt++) {
         QuaternionPerceptron newPerceptron = new QuaternionPerceptron(0.01, 42L + attempt);
-        Quaternion newBias = newPerceptron.getBias();
-        Quaternion newAction = newPerceptron.getAction();
+        Quaternion newBias = newPerceptron.getBiasRotation();
+        Quaternion newAction = newPerceptron.getActionRotation();
 
         double biasDistance = newBias.subtract(Quaternion.ONE).norm();
         double actionDistance = newAction.subtract(Quaternion.ONE).norm();
@@ -155,8 +155,8 @@ class QuaternionPerceptronTest {
       for (int attempt = 0; attempt < 5; attempt++) {
         QuaternionPerceptron perceptron = new QuaternionPerceptron(0.01, 42L + attempt);
 
-        Quaternion bias = perceptron.getBias();
-        Quaternion action = perceptron.getAction();
+        Quaternion bias = perceptron.getBiasRotation();
+        Quaternion action = perceptron.getActionRotation();
 
         // These should always be true regardless of random variation
         assertTrue(bias.isUnit(), "Bias should always be unit length");
@@ -187,8 +187,8 @@ class QuaternionPerceptronTest {
     @Test
     @DisplayName("Bias and action weights are accessible")
     void testWeightAccess() {
-      Quaternion bias = perceptron.getBias();
-      Quaternion action = perceptron.getAction();
+      Quaternion bias = perceptron.getBiasRotation();
+      Quaternion action = perceptron.getActionRotation();
 
       assertNotNull(bias);
       assertNotNull(action);
@@ -276,8 +276,8 @@ class QuaternionPerceptronTest {
       Quaternion input = Quaternion.ONE;
 
       // Get current weights
-      Quaternion bias = perceptron.getBias();
-      Quaternion action = perceptron.getAction();
+      Quaternion bias = perceptron.getBiasRotation();
+      Quaternion action = perceptron.getActionRotation();
 
       // Perform forward pass
       Quaternion output = perceptron.forward(input);
