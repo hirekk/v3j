@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/github/hirekk/v3j/branch/main/graph/badge.svg?token=QD3MLN3EF1)](https://codecov.io/github/hirekk/v3j)
+
 # V3J - VIII in Java
 
 ## Octonion-based neural network architecture
@@ -6,8 +8,6 @@ An attempt to train octonion-valued neural network without backpropagation (and 
 
 - ... but it's actually quaternions--for now.
 - aaand it doesn't really work... (for now?)
-
-[![codecov](https://codecov.io/github/hirekk/v3j/branch/main/graph/badge.svg?token=QD3MLN3EF1)](https://codecov.io/github/hirekk/v3j)
 
 ## The idea
 
