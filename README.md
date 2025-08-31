@@ -49,7 +49,7 @@ brew install openjdk@24
 ./v3j --help
 ```
 
-### 5. Run Your First Command
+### 5. Train the perceptron on 2D XOR data.
 ```bash
 # Generate a 2D XOR dataset
 ./v3j generate exact -d 2 -o data/xor/exact2d.csv
