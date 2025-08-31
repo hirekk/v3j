@@ -67,6 +67,19 @@ jacocoTestReport {
         xml.required = true
         html.required = false
     }
+    
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                '**/Main.class',
+                '**/Main$*.class',
+                '**/FuzzyCommand.class',
+                '**/TrainCommand.class', 
+                '**/ExactCommand.class',
+                '**/GenerateCommand.class'
+            ])
+        }))
+    }
 }
 
 test.finalizedBy jacocoTestReport
