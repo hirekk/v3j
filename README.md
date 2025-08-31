@@ -5,6 +5,8 @@ An attempt to train octonion-valued neural network without backpropagation...
 - ... but it's actually quaternions--for now.
 - aaand it doesn't really work... (for now?)
 
+[![codecov](https://codecov.io/gh/hkubica/v3j/branch/main/graph/badge.svg)](https://codecov.io/gh/hkubica/v3j)
+
 ## The idea
 
 Leverage the rich geometry of S^7 (or S^3 for the quaternion PoC) to do away with backpropagation.

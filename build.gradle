@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'application'
     id 'com.diffplug.spotless' version '6.25.0'
+    id 'jacoco'
 }
 
 java {
@@ -57,4 +58,14 @@ spotless {
         endWithNewline()
     }
 }
+
+// Minimal JaCoCo for GitHub coverage badge
+jacocoTestReport {
+    reports {
+        xml.required = true
+        html.required = false
+    }
+}
+
+test.finalizedBy jacocoTestReport
 
