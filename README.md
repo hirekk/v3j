@@ -1,6 +1,15 @@
-# V3J - Octonion based neural network architecture (actually, only quaternions for now)
+# V3J - Octonion neural network architecture (actually, only quaternions for now)
 
-A Java project for training a quaternion perceptron on XOR data.
+An attempt to train octonion-valued neural network without backpropagation...
+
+- ... but it's actually quaternions--for now.
+- aaand it doesn't really work... (for now?)
+
+## The idea
+
+Levarage the rich geometry of S^7 (or S^3 for the quaternion PoC) to do away with backpropagation.
+
+Eventually, take advantage of non-associativity of octonion multiplication to get rid of arbitrary activation functions.
 
 ## 📁 Structure
 
