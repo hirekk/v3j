@@ -4,14 +4,15 @@
 
 ## Octonion-based neural network architecture
 
-An attempt to train octonion-valued neural network without backpropagation (and perhaps arbitrary activation function?)...
+An attempt to train octonion-valued neural network without backpropagation (and perhaps without arbitrary activation functions?)...
 
 - ... but it's actually quaternions--for now.
-- aaand it doesn't really work... (for now?)
+- and it's just a perceptron...
+- aaaand only binary classification.
 
 ## The idea
 
-Leverage the rich geometry of S^7 (or S^3 for the quaternion PoC) to do away with backpropagation.
+Leverage the rich geometry of S^7 (or S^3 for the quaternion PoC) to do away with backpropagation - use small rotations in the direction opposite of the "error rotation" to perform weight rotations updates.
 
 Eventually, take advantage of non-associativity of octonion multiplication to get rid of arbitrary activation functions.
 
