@@ -250,7 +250,7 @@ class TrainCommand implements Runnable {
         dataset.data.stream().map(dp -> dp.label()).collect(Collectors.toList());
 
     System.out.println("Initializing QuaternionPerceptron...");
-    QuaternionPerceptron perceptron = new QuaternionPerceptron(0.1, 42L);
+    QuaternionPerceptron perceptron = new QuaternionPerceptron(42L);
 
     System.out.println("Initial bias rotation: " + perceptron.getBiasRotation());
     System.out.println("Initial action rotation: " + perceptron.getActionRotation());
@@ -263,20 +263,44 @@ class TrainCommand implements Runnable {
       perceptron.step(inputOrientations, binaryLabels);
 
       if (epoch % 10 == 0) {
-        var gradientFields =
-            perceptron.computeGradientFields(
-                inputOrientations,
-                inputOrientations.stream().map(perceptron::forward).collect(Collectors.toList()),
-                binaryLabels.stream()
-                    .map(label -> new Quaternion(label == 1 ? 1.0 : -1.0, 0.0, 0.0, 0.0))
-                    .collect(Collectors.toList()));
+        // Compute training accuracy
+        int correctPredictions = 0;
+        double totalErrorMagnitude = 0.0;
 
-        double biasMagnitude = gradientFields.biasGradient.norm();
-        double actionMagnitude = gradientFields.actionGradient.norm();
+        for (int i = 0; i < inputOrientations.size(); i++) {
+          Quaternion input = inputOrientations.get(i);
+          int targetLabel = binaryLabels.get(i);
+          int predicted = perceptron.classify(input);
+
+          if (predicted == targetLabel) {
+            correctPredictions++;
+          }
+
+          // Compute error magnitude using geodesic distance
+          Quaternion predictedQuat = perceptron.forward(input);
+          // Use the same target quaternions as the perceptron for consistency
+          Quaternion targetQuat =
+              targetLabel == 1
+                  ? Quaternion.fromAxisAngle(Math.PI, new double[] {0.0, 0.0, 1.0})
+                  : // 180°
+                  // rotation
+                  // around
+                  // Z
+                  // for
+                  // label
+                  // 1
+                  Quaternion.ONE; // Identity for label 0
+
+          double errorMagnitude = predictedQuat.geodesicDistance(targetQuat);
+          totalErrorMagnitude += errorMagnitude;
+        }
+
+        double accuracy = (double) correctPredictions / inputOrientations.size();
+        double avgErrorMagnitude = totalErrorMagnitude / inputOrientations.size();
 
         System.out.printf(
-            "Epoch %3d: Bias gradient magnitude: %.6f, Action gradient magnitude: %.6f%n",
-            epoch, biasMagnitude, actionMagnitude);
+            "Epoch %3d: Training Accuracy: %.2f%%, Average Error Magnitude: %.6f%n",
+            epoch, accuracy * 100.0, avgErrorMagnitude);
       }
     }
 

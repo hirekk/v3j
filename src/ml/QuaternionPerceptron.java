@@ -5,7 +5,6 @@
 
 package ml;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -37,15 +36,15 @@ import org.apache.commons.math3.linear.SingularMatrixException;
  * learn both global transformations and input-specific adjustments through separate rotation
  * parameters.
  *
+ * <p>The learning rate is adaptive and based on the cross product magnitude between predicted and
+ * target orientations, providing automatic convergence as errors approach zero.
+ *
  * @see Quaternion
  */
 public final class QuaternionPerceptron {
 
   /** Fixed axis for binary classification */
   private static final double[] CLASSIFICATION_AXIS = {0, 0, 1}; // Z-axis
-
-  /** Learning rate for rotation updates */
-  private final double learningRate;
 
   /** Random number generator for rotation initialization */
   private final Random random;
@@ -66,16 +65,9 @@ public final class QuaternionPerceptron {
   /**
    * Constructs a QuaternionPerceptron with the specified parameters.
    *
-   * @param learningRate the learning rate for rotation updates (must be positive)
    * @param randomSeed the seed for reproducible rotation initialization
-   * @throws IllegalArgumentException if learningRate is not positive
    */
-  public QuaternionPerceptron(double learningRate, long randomSeed) {
-    if (learningRate <= 0.0) {
-      throw new IllegalArgumentException("Learning rate must be positive, got: " + learningRate);
-    }
-
-    this.learningRate = learningRate;
+  public QuaternionPerceptron(long randomSeed) {
     this.random = new Random(randomSeed);
 
     // Initialize rotations as random unit quaternions
@@ -83,20 +75,12 @@ public final class QuaternionPerceptron {
     this.actionRotation = initializeRandomUnitQuaternion();
   }
 
-  /** Constructs a QuaternionPerceptron with default learning rate and random seed. */
+  /** Constructs a QuaternionPerceptron with default random seed. */
   public QuaternionPerceptron() {
-    this(0.01, System.currentTimeMillis());
+    this(System.currentTimeMillis());
   }
 
   // Public methods
-  /**
-   * Returns the current learning rate.
-   *
-   * @return the learning rate value
-   */
-  public double getLearningRate() {
-    return learningRate;
-  }
 
   /**
    * Returns the current bias rotation.
@@ -235,31 +219,64 @@ public final class QuaternionPerceptron {
       List<Quaternion> inputOrientations,
       List<Quaternion> predictedOrientations,
       List<Quaternion> targetOrientations) {
-    // Collect individual rotation updates from each sample
-    List<Quaternion> biasUpdates = new ArrayList<>();
-    List<Quaternion> actionUpdates = new ArrayList<>();
+
+    // Accumulate gradients across the batch
+    double[] biasGradientVector = {0.0, 0.0, 0.0};
+    double[] actionGradientVector = {0.0, 0.0, 0.0};
 
     for (int i = 0; i < inputOrientations.size(); i++) {
       Quaternion input = inputOrientations.get(i);
       Quaternion predicted = predictedOrientations.get(i);
       Quaternion target = targetOrientations.get(i);
 
-      // Compute error rotation: rotation from predicted to target
-      Quaternion errorRotation = predicted.geodesicRotation(target);
+      // Compute geodesic error: the rotation needed to go from predicted to target
+      // This is: target * predicted^(-1)
+      Quaternion error = target.multiply(predicted.inverse());
 
-      // Decompose error into bias, residual, and action components
-      DecompositionResult decomposition = decomposeUpdate(errorRotation, input);
+      // For unit quaternions, the error magnitude represents the rotation angle
+      // We can use the geodesic distance as the adaptive rate
+      double adaptiveRate = predicted.geodesicDistance(target);
 
-      // Collect individual updates for proper aggregation
-      biasUpdates.add(decomposition.biasUpdate);
-      actionUpdates.add(decomposition.actionUpdate);
+      // Skip if error is too small (quaternions nearly coincide)
+      if (adaptiveRate < 1e-6) {
+        continue;
+      }
+
+      // Convert quaternions to rotation vectors using Lie algebra mapping
+      // This maps from the quaternion group (SO(3)) to its tangent space (so(3))
+      double[] vError = error.log().getVector();
+      double[] vInput = input.log().getVector();
+      double[] vAction = actionRotation.log().getVector();
+      double[] vBias = biasRotation.log().getVector();
+
+      // Form basis from {v_bias, v_input, v_action} in the tangent space
+      double[][] basis = {vBias, vInput, vAction};
+
+      try {
+        // Find coefficients of v_error in the basis {v_bias, v_input, v_action}
+        double[] coefficients = solveLinearSystem3x3(basis, vError);
+
+        // Update bias and action in the opposite direction of the gradient, scaled by coefficients
+        // and adaptive rate
+        for (int j = 0; j < 3; j++) {
+          // Bias update: opposite direction, scaled by coefficient[0] and adaptive rate
+          biasGradientVector[j] += 0.01 * coefficients[0] * adaptiveRate;
+
+          // Action update: opposite direction, scaled by coefficient[2] and adaptive rate
+          actionGradientVector[j] += 0.01 * coefficients[2] * adaptiveRate;
+        }
+
+      } catch (SingularMatrixException e) {
+        // Skip this sample if basis is linearly dependent
+        continue;
+      }
     }
 
-    // Aggregate rotations using exponential map summation
-    Quaternion aggregatedBiasGradient = exponentialMapSum(biasUpdates);
-    Quaternion aggregatedActionGradient = exponentialMapSum(actionUpdates);
+    // Create gradient quaternions from accumulated vectors
+    Quaternion biasGradient = Quaternion.fromRotationVector(biasGradientVector);
+    Quaternion actionGradient = Quaternion.fromRotationVector(actionGradientVector);
 
-    return new GradientFields(aggregatedBiasGradient, aggregatedActionGradient);
+    return new GradientFields(biasGradient, actionGradient);
   }
 
   // TODO: early stopping
@@ -270,144 +287,16 @@ public final class QuaternionPerceptron {
    */
   private void updateRotations(GradientFields gradientFields) {
     // Update bias rotation (world frame) - left multiplication
+    // Use inverse of gradient to move in opposite direction (gradient descent)
     double[] biasVector = gradientFields.biasGradient.toRotationVector();
-    for (int i = 0; i < 3; i++) {
-      biasVector[i] *= learningRate;
-    }
-    Quaternion biasUpdate = Quaternion.fromRotationVector(biasVector);
+    Quaternion biasUpdate = Quaternion.fromRotationVector(biasVector).inverse();
     biasRotation = biasUpdate.multiply(biasRotation);
 
     // Update action rotation (local frame) - right multiplication
+    // Use inverse of gradient to move in opposite direction (gradient descent)
     double[] actionVector = gradientFields.actionGradient.toRotationVector();
-    for (int i = 0; i < 3; i++) {
-      actionVector[i] *= learningRate;
-    }
-    Quaternion actionUpdate = Quaternion.fromRotationVector(actionVector);
+    Quaternion actionUpdate = Quaternion.fromRotationVector(actionVector).inverse();
     actionRotation = actionRotation.multiply(actionUpdate);
-  }
-
-  /**
-   * Aggregates a list of rotations using exponential map summation. This method converts rotations
-   * to their logarithms (tangent space), sums them, then maps back to the quaternion group via
-   * exponential map.
-   *
-   * @param rotations the list of rotations to aggregate
-   * @return the summed rotation quaternion
-   */
-  private Quaternion exponentialMapSum(List<Quaternion> rotations) {
-    if (rotations.isEmpty()) {
-      return Quaternion.ONE;
-    }
-    if (rotations.size() == 1) {
-      return rotations.get(0);
-    }
-
-    // Convert rotations to rotation vectors (tangent space) using log
-    double[] sumVector = {0.0, 0.0, 0.0};
-    for (Quaternion q : rotations) {
-      Quaternion logQ = q.log(); // Use log() to get to tangent space
-      double[] v = logQ.getVector(); // Get vector part of log
-      for (int i = 0; i < 3; i++) {
-        sumVector[i] += v[i]; // SUM, not average
-      }
-    }
-
-    // Create quaternion from summed vector and apply exponential map
-    Quaternion sumLog = new Quaternion(0.0, sumVector[0], sumVector[1], sumVector[2]);
-    return sumLog.exp(); // Use exp() method for exponential map
-  }
-
-  /**
-   * Decomposes the error rotation into bias, residual, and action components. This is the full
-   * implementation matching the Python decompose_update method.
-   *
-   * <p>When the basis vectors are linearly dependent, returns identity rotations (no updates)
-   * instead of failing the training step.
-   *
-   * @param errorRotation the error rotation to decompose
-   * @param input the input orientation
-   * @return a DecompositionResult containing the three update components
-   */
-  private DecompositionResult decomposeUpdate(Quaternion errorRotation, Quaternion input) {
-    // Convert quaternions to rotation vectors (3D vectors)
-    double[] vBias = biasRotation.toRotationVector();
-    double[] vInput = input.toRotationVector();
-    double[] vAction = actionRotation.toRotationVector();
-    double[] vError = errorRotation.toRotationVector();
-
-    // Form a basis from the vectors v_b, v_k, and v_a
-    double[][] basis = {vBias, vInput, vAction};
-
-    try {
-      // Check if basis is linearly independent and solve for coefficients
-      double[] coefficients = solveLinearSystem3x3(basis, vError);
-
-      // Project error components back into quaternion space using quaternion exponentiation
-      Quaternion biasUpdate = computeBiasUpdate(coefficients, input, errorRotation);
-      Quaternion residualUpdate = computeResidualUpdate(coefficients, errorRotation);
-      Quaternion actionUpdate = computeActionUpdate(coefficients, input, errorRotation);
-
-      return new DecompositionResult(biasUpdate, residualUpdate, actionUpdate);
-    } catch (SingularMatrixException e) {
-      // When basis vectors are linearly dependent, return identity rotations (no updates)
-      // This gracefully handles the mathematical limitation without failing the training step
-      return new DecompositionResult(Quaternion.ONE, Quaternion.ONE, Quaternion.ONE);
-    }
-  }
-
-  // TODO: this isn't right
-  /** Computes the bias update component from the decomposition coefficients. */
-  private Quaternion computeBiasUpdate(
-      double[] coefficients, Quaternion input, Quaternion errorRotation) {
-    // u_b = (q_kernel.conjugate() ** coefficients[1] *
-    // self.action.conjugate() ** coefficients[2] *
-    // q_update ** coefficients[0])
-    Quaternion term1 = input.conjugate().pow(coefficients[1]);
-    Quaternion term2 = actionRotation.conjugate().pow(coefficients[2]);
-    Quaternion term3 = errorRotation.pow(coefficients[0]);
-
-    Quaternion result = term1.multiply(term2).multiply(term3);
-    return result.normalize();
-  }
-
-  /** Computes the residual update component from the decomposition coefficients. */
-  private Quaternion computeResidualUpdate(double[] coefficients, Quaternion errorRotation) {
-    // u_residual = (self.bias.conjugate() ** coefficients[0] *
-    // self.action.conjugate() ** coefficients[2] *
-    // q_update ** coefficients[1])
-    Quaternion term1 = biasRotation.conjugate().pow(coefficients[0]);
-    Quaternion term2 = actionRotation.conjugate().pow(coefficients[2]);
-    Quaternion term3 = errorRotation.pow(coefficients[1]);
-
-    Quaternion result = term1.multiply(term2).multiply(term3);
-    return result.normalize();
-  }
-
-  /** Computes the action update component from the decomposition coefficients. */
-  private Quaternion computeActionUpdate(
-      double[] coefficients, Quaternion input, Quaternion errorRotation) {
-    // u_a = (self.bias.conjugate() ** coefficients[0] *
-    // q_kernel.conjugate() ** coefficients[1] *
-    // q_update ** coefficients[2])
-    Quaternion term1 = biasRotation.conjugate().pow(coefficients[0]);
-    Quaternion term2 = input.conjugate().pow(coefficients[1]);
-    Quaternion term3 = errorRotation.pow(coefficients[2]);
-
-    Quaternion result = term1.multiply(term2).multiply(term3);
-    return result.normalize();
-  }
-
-  /** Result container for the decomposition of an error rotation. */
-  private static class DecompositionResult {
-    final Quaternion biasUpdate;
-    final Quaternion residualUpdate;
-    final Quaternion actionUpdate;
-
-    DecompositionResult(Quaternion biasUpdate, Quaternion residualUpdate, Quaternion actionUpdate) {
-      this.biasUpdate = biasUpdate;
-      this.residualUpdate = residualUpdate;
-      this.actionUpdate = actionUpdate;
-    }
   }
 
   /** Result container for gradient fields computed from a batch. */

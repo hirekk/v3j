@@ -40,7 +40,6 @@ class QuaternionPerceptronTest {
     void testDefaultConstructor() {
       QuaternionPerceptron perceptron = new QuaternionPerceptron();
 
-      assertEquals(0.01, perceptron.getLearningRate(), EPSILON);
       assertNotNull(perceptron.getBiasRotation());
       assertNotNull(perceptron.getActionRotation());
     }
@@ -48,12 +47,10 @@ class QuaternionPerceptronTest {
     @Test
     @DisplayName("Parameterized constructor initializes with specified values")
     void testParameterizedConstructor() {
-      double learningRate = 0.05;
       long randomSeed = 42L;
 
-      QuaternionPerceptron perceptron = new QuaternionPerceptron(learningRate, randomSeed);
+      QuaternionPerceptron perceptron = new QuaternionPerceptron(randomSeed);
 
-      assertEquals(learningRate, perceptron.getLearningRate(), EPSILON);
       assertNotNull(perceptron.getBiasRotation());
       assertNotNull(perceptron.getActionRotation());
     }
@@ -63,8 +60,8 @@ class QuaternionPerceptronTest {
     void testDeterministicInitialization() {
       long seed = 12345L;
 
-      QuaternionPerceptron perceptron1 = new QuaternionPerceptron(0.01, seed);
-      QuaternionPerceptron perceptron2 = new QuaternionPerceptron(0.01, seed);
+      QuaternionPerceptron perceptron1 = new QuaternionPerceptron(seed);
+      QuaternionPerceptron perceptron2 = new QuaternionPerceptron(seed);
 
       assertEquals(perceptron1.getBiasRotation(), perceptron2.getBiasRotation());
       assertEquals(perceptron1.getActionRotation(), perceptron2.getActionRotation());
@@ -73,25 +70,11 @@ class QuaternionPerceptronTest {
     @Test
     @DisplayName("Constructor with different seeds produces different weights")
     void testNonDeterministicInitialization() {
-      QuaternionPerceptron perceptron1 = new QuaternionPerceptron(0.01, 1L);
-      QuaternionPerceptron perceptron2 = new QuaternionPerceptron(0.01, 2L);
+      QuaternionPerceptron perceptron1 = new QuaternionPerceptron(1L);
+      QuaternionPerceptron perceptron2 = new QuaternionPerceptron(2L);
 
       assertNotEquals(perceptron1.getBiasRotation(), perceptron2.getBiasRotation());
       assertNotEquals(perceptron1.getActionRotation(), perceptron2.getActionRotation());
-    }
-
-    @Test
-    @DisplayName("Constructor rejects non-positive learning rate")
-    void testConstructorRejectsNonPositiveLearningRate() {
-      assertThrows(
-          IllegalArgumentException.class,
-          () -> new QuaternionPerceptron(0.0, 42L),
-          "Should reject zero learning rate");
-
-      assertThrows(
-          IllegalArgumentException.class,
-          () -> new QuaternionPerceptron(-0.01, 42L),
-          "Should reject negative learning rate");
     }
   }
 
@@ -102,7 +85,7 @@ class QuaternionPerceptronTest {
     @Test
     @DisplayName("Weights are valid unit quaternions")
     void testWeightsAreValidUnitQuaternions() {
-      QuaternionPerceptron perceptron = new QuaternionPerceptron(0.01, 42L);
+      QuaternionPerceptron perceptron = new QuaternionPerceptron(42L);
 
       Quaternion bias = perceptron.getBiasRotation();
       Quaternion action = perceptron.getActionRotation();
@@ -126,7 +109,7 @@ class QuaternionPerceptronTest {
 
       // Try up to 5 different random initializations to ensure robustness
       for (int attempt = 0; attempt < 5; attempt++) {
-        QuaternionPerceptron newPerceptron = new QuaternionPerceptron(0.01, 42L + attempt);
+        QuaternionPerceptron newPerceptron = new QuaternionPerceptron(42L + attempt);
         Quaternion newBias = newPerceptron.getBiasRotation();
         Quaternion newAction = newPerceptron.getActionRotation();
 
@@ -161,7 +144,7 @@ class QuaternionPerceptronTest {
     void testWeightsMaintainUnitLength() {
       // Test that weights are consistently unit quaternions across different random seeds
       for (int attempt = 0; attempt < 5; attempt++) {
-        QuaternionPerceptron perceptron = new QuaternionPerceptron(0.01, 42L + attempt);
+        QuaternionPerceptron perceptron = new QuaternionPerceptron(42L + attempt);
 
         Quaternion bias = perceptron.getBiasRotation();
         Quaternion action = perceptron.getActionRotation();
@@ -183,13 +166,7 @@ class QuaternionPerceptronTest {
 
     @BeforeEach
     void setUp() {
-      perceptron = new QuaternionPerceptron(0.01, 42L);
-    }
-
-    @Test
-    @DisplayName("Learning rate is accessible and correct")
-    void testLearningRateAccess() {
-      assertEquals(0.01, perceptron.getLearningRate(), EPSILON);
+      perceptron = new QuaternionPerceptron(42L);
     }
 
     @Test
@@ -226,7 +203,7 @@ class QuaternionPerceptronTest {
 
     @BeforeEach
     void setUp() {
-      perceptron = new QuaternionPerceptron(0.01, 42L);
+      perceptron = new QuaternionPerceptron(42L);
     }
 
     @Test
@@ -317,7 +294,7 @@ class QuaternionPerceptronTest {
 
     @BeforeEach
     void setUp() {
-      perceptron = new QuaternionPerceptron(0.01, 42L);
+      perceptron = new QuaternionPerceptron(42L);
     }
 
     @Test
@@ -381,7 +358,7 @@ class QuaternionPerceptronTest {
 
     @BeforeEach
     void setUp() {
-      perceptron = new QuaternionPerceptron(0.01, 42L);
+      perceptron = new QuaternionPerceptron(42L);
     }
 
     @Test
@@ -523,7 +500,7 @@ class QuaternionPerceptronTest {
 
     @BeforeEach
     void setUp() {
-      perceptron = new QuaternionPerceptron(0.01, 42L);
+      perceptron = new QuaternionPerceptron(42L);
     }
 
     @Test
