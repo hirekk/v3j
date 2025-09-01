@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
+ * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
  * terms.
  */
 
@@ -17,11 +17,13 @@ import java.util.List;
 /**
  * Container for N-dimensional data points with CSV import/export capabilities.
  *
- * <p>This class provides a mutable container for DataPoint objects, supporting operations like
+ * <p>
+ * This class provides a mutable container for DataPoint objects, supporting operations like
  * shuffling, subsetting, and CSV serialization. The dataset maintains a fixed dimensionality that
  * applies to all contained data points.
  *
- * <p>The class supports both programmatic construction and loading from CSV files. CSV files are
+ * <p>
+ * The class supports both programmatic construction and loading from CSV files. CSV files are
  * expected to have N coordinate columns followed by a binary label column.
  */
 public final class Dataset {
@@ -188,7 +190,8 @@ public final class Dataset {
   /**
    * Shuffles the data points in this dataset in-place.
    *
-   * <p>This method modifies the internal data list by randomizing the order of data points using
+   * <p>
+   * This method modifies the internal data list by randomizing the order of data points using
    * Collections.shuffle().
    */
   public void shuffle() {
@@ -240,7 +243,8 @@ public final class Dataset {
     try (BufferedWriter writer = Files.newBufferedWriter(filePath)) {
       for (DataPoint point : data) {
         for (int i = 0; i < numDimensions; i++) {
-          if (i > 0) writer.write(",");
+          if (i > 0)
+            writer.write(",");
           writer.write(String.format(formatString, point.getCoordinate(i)));
         }
         writer.write("," + point.label() + "\n");

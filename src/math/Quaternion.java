@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
+ * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
  * terms.
  */
 
@@ -10,19 +10,22 @@ import java.util.Objects;
 /**
  * Represents a quaternion in the form w + xi + yj + zk where w, x, y, z are real numbers.
  *
- * <p>Quaternions extend complex numbers and are useful for representing 3D rotations and
- * orientations. This class provides comprehensive mathematical operations including arithmetic,
- * exponential functions, rotation conversions, and interpolation methods.
+ * <p>
+ * Quaternions extend complex numbers and are useful for representing 3D rotations and orientations.
+ * This class provides comprehensive mathematical operations including arithmetic, exponential
+ * functions, rotation conversions, and interpolation methods.
  *
- * <p>The class is immutable and thread-safe. All operations return new Quaternion instances.
+ * <p>
+ * The class is immutable and thread-safe. All operations return new Quaternion instances.
  *
- * <p>Mathematical operations follow standard quaternion algebra rules:
+ * <p>
+ * Mathematical operations follow standard quaternion algebra rules:
  *
  * <ul>
- *   <li>i² = j² = k² = ijk = -1
- *   <li>ij = k, ji = -k
- *   <li>jk = i, kj = -i
- *   <li>ki = j, ik = -j
+ * <li>i² = j² = k² = ijk = -1
+ * <li>ij = k, ji = -k
+ * <li>jk = i, kj = -i
+ * <li>ki = j, ik = -j
  * </ul>
  */
 public final class Quaternion {
@@ -198,15 +201,15 @@ public final class Quaternion {
   /**
    * Multiplies this quaternion by another quaternion.
    *
-   * <p>Quaternion multiplication is non-commutative and follows the rules: i² = j² = k² = ijk = -1,
-   * ij = k, ji = -k, jk = i, kj = -i, ki = j, ik = -j
+   * <p>
+   * Quaternion multiplication is non-commutative and follows the rules: i² = j² = k² = ijk = -1, ij
+   * = k, ji = -k, jk = i, kj = -i, ki = j, ik = -j
    *
    * @param other the quaternion to multiply by
    * @return a new quaternion representing the product
    */
   public Quaternion multiply(Quaternion other) {
-    return new Quaternion(
-        w * other.w - x * other.x - y * other.y - z * other.z,
+    return new Quaternion(w * other.w - x * other.x - y * other.y - z * other.z,
         w * other.x + x * other.w + y * other.z - z * other.y,
         w * other.y - x * other.z + y * other.w + z * other.x,
         w * other.z + x * other.y - y * other.x + z * other.w);
@@ -313,8 +316,9 @@ public final class Quaternion {
   /**
    * Computes the cross product with another quaternion.
    *
-   * <p>Cross product is only defined for vector quaternions (w = 0). The result is a vector
-   * quaternion representing the cross product of the 3D vectors.
+   * <p>
+   * Cross product is only defined for vector quaternions (w = 0). The result is a vector quaternion
+   * representing the cross product of the 3D vectors.
    *
    * @param other the vector quaternion to compute cross product with
    * @return a new vector quaternion representing the cross product
@@ -324,15 +328,16 @@ public final class Quaternion {
     if (!isVector() || !other.isVector()) {
       throw new IllegalArgumentException("Cross product only defined for vector quaternions");
     }
-    return new Quaternion(
-        0.0, y * other.z - z * other.y, z * other.x - x * other.z, x * other.y - y * other.x);
+    return new Quaternion(0.0, y * other.z - z * other.y, z * other.x - x * other.z,
+        x * other.y - y * other.x);
   }
 
   /**
    * Creates a quaternion representing rotation around an axis.
    *
-   * <p>The rotation is specified by an angle (in radians) and a 3D axis vector. The axis vector
-   * will be normalized automatically.
+   * <p>
+   * The rotation is specified by an angle (in radians) and a 3D axis vector. The axis vector will
+   * be normalized automatically.
    *
    * @param angle the rotation angle in radians
    * @param axis the 3D axis vector [x, y, z]
@@ -352,17 +357,15 @@ public final class Quaternion {
     double halfAngle = angle / 2.0;
     double sinHalfAngle = Math.sin(halfAngle);
 
-    return new Quaternion(
-        Math.cos(halfAngle),
-        axis[0] * sinHalfAngle / norm,
-        axis[1] * sinHalfAngle / norm,
-        axis[2] * sinHalfAngle / norm);
+    return new Quaternion(Math.cos(halfAngle), axis[0] * sinHalfAngle / norm,
+        axis[1] * sinHalfAngle / norm, axis[2] * sinHalfAngle / norm);
   }
 
   /**
    * Creates a quaternion from a rotation vector representation.
    *
-   * <p>A rotation vector is a 3D vector where the direction represents the rotation axis and the
+   * <p>
+   * A rotation vector is a 3D vector where the direction represents the rotation axis and the
    * magnitude represents the rotation angle. This is the inverse operation of toRotationVector().
    *
    * @param rotationVector the rotation vector as a 3D array [x, y, z]
@@ -375,11 +378,8 @@ public final class Quaternion {
     }
 
     // Extract angle and axis from the rotation vector
-    double angle =
-        Math.sqrt(
-            rotationVector[0] * rotationVector[0]
-                + rotationVector[1] * rotationVector[1]
-                + rotationVector[2] * rotationVector[2]);
+    double angle = Math.sqrt(rotationVector[0] * rotationVector[0]
+        + rotationVector[1] * rotationVector[1] + rotationVector[2] * rotationVector[2]);
 
     // Handle very small rotations (return identity)
     if (angle < 1e-10) {
@@ -387,9 +387,8 @@ public final class Quaternion {
     }
 
     // Normalize the axis
-    double[] axis = {
-      rotationVector[0] / angle, rotationVector[1] / angle, rotationVector[2] / angle
-    };
+    double[] axis =
+        {rotationVector[0] / angle, rotationVector[1] / angle, rotationVector[2] / angle};
 
     // Create quaternion using axis-angle representation
     return fromAxisAngle(angle, axis);
@@ -398,11 +397,13 @@ public final class Quaternion {
   /**
    * Computes the geodesic rotation from this quaternion to the target quaternion.
    *
-   * <p>This method computes the rotation quaternion that transforms this quaternion to the target
+   * <p>
+   * This method computes the rotation quaternion that transforms this quaternion to the target
    * quaternion. The result represents the shortest rotation path on the 4D unit sphere.
    *
-   * <p>Mathematically, if this = q₁ and target = q₂, then the result r satisfies: q₁ * r = q₂,
-   * which means r = q₁^(-1) * q₂
+   * <p>
+   * Mathematically, if this = q₁ and target = q₂, then the result r satisfies: q₁ * r = q₂, which
+   * means r = q₁^(-1) * q₂
    *
    * @param target the target quaternion
    * @return a quaternion representing the rotation from this quaternion to target
@@ -424,8 +425,9 @@ public final class Quaternion {
    * Computes the geodesic distance between this quaternion and another along the great circle on
    * S³.
    *
-   * <p>The geodesic distance is the angle between the quaternions, computed using the dot product.
-   * For unit quaternions, this represents the shortest angular distance on the 4D unit sphere.
+   * <p>
+   * The geodesic distance is the angle between the quaternions, computed using the dot product. For
+   * unit quaternions, this represents the shortest angular distance on the 4D unit sphere.
    *
    * @param other the other quaternion
    * @return the geodesic distance in radians
@@ -452,8 +454,9 @@ public final class Quaternion {
   /**
    * Performs spherical linear interpolation (SLERP) between two quaternions.
    *
-   * <p>SLERP provides smooth interpolation between two rotations, following the shortest arc on the
-   * 4D unit sphere. The interpolation parameter t should be in [0, 1].
+   * <p>
+   * SLERP provides smooth interpolation between two rotations, following the shortest arc on the 4D
+   * unit sphere. The interpolation parameter t should be in [0, 1].
    *
    * @param q1 the first quaternion
    * @param q2 the second quaternion
@@ -488,7 +491,8 @@ public final class Quaternion {
   /**
    * Computes the exponential of this quaternion.
    *
-   * <p>For a quaternion q = w + v where v is the vector part: e^q = e^w * (cos(|v|) + v/|v| *
+   * <p>
+   * For a quaternion q = w + v where v is the vector part: e^q = e^w * (cos(|v|) + v/|v| *
    * sin(|v|))
    *
    * @return a new quaternion representing e^q
@@ -503,14 +507,15 @@ public final class Quaternion {
     double sinV = Math.sin(vNorm);
     double cosV = Math.cos(vNorm);
 
-    return new Quaternion(
-        expW * cosV, expW * sinV * x / vNorm, expW * sinV * y / vNorm, expW * sinV * z / vNorm);
+    return new Quaternion(expW * cosV, expW * sinV * x / vNorm, expW * sinV * y / vNorm,
+        expW * sinV * z / vNorm);
   }
 
   /**
    * Computes the natural logarithm of this quaternion.
    *
-   * <p>For a quaternion q = w + v where v is the vector part: ln(q) = ln(|q|) + v/|v| * acos(w/|q|)
+   * <p>
+   * For a quaternion q = w + v where v is the vector part: ln(q) = ln(|q|) + v/|v| * acos(w/|q|)
    *
    * @return a new quaternion representing ln(q)
    * @throws ArithmeticException if this quaternion is zero
@@ -536,16 +541,20 @@ public final class Quaternion {
   /**
    * Raises this quaternion to a scalar power.
    *
-   * <p>Uses the identity q^a = e^(a * ln(q)) for general powers. Special cases: q^0 = 1, q^1 = q,
+   * <p>
+   * Uses the identity q^a = e^(a * ln(q)) for general powers. Special cases: q^0 = 1, q^1 = q,
    * q^(-1) = q⁻¹
    *
    * @param exponent the scalar exponent
    * @return a new quaternion representing q^exponent
    */
   public Quaternion pow(double exponent) {
-    if (exponent == 0.0) return ONE;
-    if (exponent == 1.0) return this;
-    if (exponent == -1.0) return inverse();
+    if (exponent == 0.0)
+      return ONE;
+    if (exponent == 1.0)
+      return this;
+    if (exponent == -1.0)
+      return inverse();
 
     return log().multiply(exponent).exp();
   }
@@ -553,7 +562,8 @@ public final class Quaternion {
   /**
    * Raises this quaternion to a quaternion power.
    *
-   * <p>Currently only supports scalar quaternion exponents.
+   * <p>
+   * Currently only supports scalar quaternion exponents.
    *
    * @param exponent the quaternion exponent
    * @return a new quaternion representing q^exponent
@@ -569,10 +579,12 @@ public final class Quaternion {
   /**
    * Converts this quaternion to a 3x3 rotation matrix.
    *
-   * <p>The quaternion must be normalized (unit quaternion) for this conversion. Returns the matrix
-   * as a 9-element array in row-major order.
+   * <p>
+   * The quaternion must be normalized (unit quaternion) for this conversion. Returns the matrix as
+   * a 9-element array in row-major order.
    *
-   * <p>For unit quaternions, w² = 1 - x² - y² - z², so w² is not explicitly needed in the matrix
+   * <p>
+   * For unit quaternions, w² = 1 - x² - y² - z², so w² is not explicitly needed in the matrix
    * elements.
    *
    * @return 3x3 rotation matrix as a 9-element array [m11, m12, m13, m21, m22, m23, m31, m32, m33]
@@ -587,23 +599,16 @@ public final class Quaternion {
     double y2 = y * y;
     double z2 = z * z;
 
-    return new double[] {
-      1 - 2 * (y2 + z2),
-      2 * (x * y - w * z),
-      2 * (x * z + w * y),
-      2 * (x * y + w * z),
-      1 - 2 * (x2 + z2),
-      2 * (y * z - w * x),
-      2 * (x * z - w * y),
-      2 * (y * z + w * x),
-      1 - 2 * (x2 + y2)
-    };
+    return new double[] {1 - 2 * (y2 + z2), 2 * (x * y - w * z), 2 * (x * z + w * y),
+        2 * (x * y + w * z), 1 - 2 * (x2 + z2), 2 * (y * z - w * x), 2 * (x * z - w * y),
+        2 * (y * z + w * x), 1 - 2 * (x2 + y2)};
   }
 
   /**
    * Checks if this quaternion equals another object.
    *
-   * <p>Two quaternions are equal if all their components are equal. Uses Double.compare for proper
+   * <p>
+   * Two quaternions are equal if all their components are equal. Uses Double.compare for proper
    * handling of NaN and signed zeros.
    *
    * @param obj the object to compare with
@@ -611,14 +616,14 @@ public final class Quaternion {
    */
   @Override
   public boolean equals(Object obj) {
-    if (this == obj) return true;
-    if (obj == null || getClass() != obj.getClass()) return false;
+    if (this == obj)
+      return true;
+    if (obj == null || getClass() != obj.getClass())
+      return false;
 
     Quaternion that = (Quaternion) obj;
-    return Double.compare(that.w, w) == 0
-        && Double.compare(that.x, x) == 0
-        && Double.compare(that.y, y) == 0
-        && Double.compare(that.z, z) == 0;
+    return Double.compare(that.w, w) == 0 && Double.compare(that.x, x) == 0
+        && Double.compare(that.y, y) == 0 && Double.compare(that.z, z) == 0;
   }
 
   /**
@@ -635,7 +640,8 @@ public final class Quaternion {
    * Converts this quaternion to its rotation vector representation. This extracts the axis-angle
    * representation and returns the axis scaled by the angle.
    *
-   * <p>For unit quaternions, the rotation vector is the vector part scaled by 2*acos(w). This is
+   * <p>
+   * For unit quaternions, the rotation vector is the vector part scaled by 2*acos(w). This is
    * useful for converting quaternions to 3D rotation vectors for mathematical operations.
    *
    * @return the rotation vector as a 3D array [x, y, z]
@@ -665,15 +671,15 @@ public final class Quaternion {
       return new double[] {0.0, 0.0, 0.0};
     }
 
-    return new double[] {
-      angle * vector[0] / vectorNorm, angle * vector[1] / vectorNorm, angle * vector[2] / vectorNorm
-    };
+    return new double[] {angle * vector[0] / vectorNorm, angle * vector[1] / vectorNorm,
+        angle * vector[2] / vectorNorm};
   }
 
   /**
    * Returns a string representation of this quaternion.
    *
-   * <p>The format is "Quaternion(w, x, y, z)" with 6 decimal places precision.
+   * <p>
+   * The format is "Quaternion(w, x, y, z)" with 6 decimal places precision.
    *
    * @return a string representation of this quaternion
    */
