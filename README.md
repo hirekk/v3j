@@ -148,34 +148,32 @@ cd /path/to/v3j
 
 ```
 v3j/
-├── build.gradle             # Gradle config with Java 24, JUnit, Picocli, Spotless
-├── gradlew                  # Gradle wrapper
-├── v3j                      # Shell script wrapper (included)
 ├── src/
+│   ├── Main.java           # CLI entry point
 │   ├── data/               # Data generation package
-│   │   └── README.md       # Detailed data package documentation
-│   └── math/               # Mathematical abstractions package
-│       └── README.md       # Detailed math package documentation
-└── build/                   # Build output (auto-generated)
-    └── libs/
-        └── v3j.jar         # Executable JAR (after running ./gradlew jar)
+│   ├── math/               # Mathematical abstractions
+│   └── ml/                 # Machine learning
+├── test/                   # Test suite
+└── build.gradle            # Build configuration
 ```
 
 ## Project Features
 
-- **Modern Java 24** with records, pattern matching
-- **Strategy Pattern** for different generation approaches
-- **Builder Pattern** for fluent API design
-- **Custom CSV I/O** without external dependency based on known data format
-- **CLI interface** using Picocli with short aliases
-- **Code formatting** with Spotless
-- **JUnit 5** testing framework
+- **Modern Java 24** - Records, pattern matching, enhanced switch expressions
+- **Design Patterns** - Strategy pattern for dataset generation, Builder pattern for fluent APIs
+- **Immutability** - All core classes are immutable and thread-safe
+- **Comprehensive Testing** - JUnit 5 with extensive edge case coverage
+- **Custom CSV I/O** - No external dependencies for data serialization
+- **Professional CLI** - Picocli-based interface with validation and help
+- **Code Quality** - Spotless formatting, comprehensive error handling
+
 
 ## Documentation
 
 For detailed usage instructions and examples, see the package-specific READMEs:
 - [Data Package Documentation](src/data/README.md)
 - [Math Package Documentation](src/math/README.md)
+- [Machine Learning Package Documentation](src/ml/README.md)
 
 ## License
 
