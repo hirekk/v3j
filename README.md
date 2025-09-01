@@ -176,3 +176,9 @@ v3j/
 For detailed usage instructions and examples, see the package-specific READMEs:
 - [Data Package Documentation](src/data/README.md)
 - [Math Package Documentation](src/math/README.md)
+
+## License
+
+**Copyright (c) 2025 Hieronim Kubica**
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

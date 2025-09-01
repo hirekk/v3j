@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2024 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
+ * terms.
+ */
+
 package math;
 
 import java.util.Objects;

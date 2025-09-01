@@ -56,3 +56,9 @@ double norm = q1.norm();
 - Computer vision and image processing
 - Physics simulations
 - Neural network architectures
+
+## License
+
+**Copyright (c) 2025 Hieronim Kubica**
+
+This package is part of V3J, licensed under the MIT License. See the main [LICENSE](../../LICENSE) file for details.

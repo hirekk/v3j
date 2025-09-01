@@ -71,15 +71,21 @@ CSV files contain N coordinate columns followed by a binary label column (0 or 1
 
 **Create a 3D exact XOR dataset:**
 ```bash
-./gradlew run --args="exact -d 3 -o data/xor/exact3d.csv"
+./v3j generate exact -d 3 -o data/xor/exact3d.csv
 ```
 
 **Create a 2D fuzzy XOR dataset:**
 ```bash
-./gradlew run --args="fuzzy -d 2 -c 20 -v 0.1 -o data/xor/fuzzy2d.csv"
+./v3j generate fuzzy -d 2 -c 20 -v 0.1 -o data/xor/fuzzy2d.csv
 ```
 
 **Create a 3D fuzzy XOR dataset with custom seed:**
 ```bash
-./gradlew run --args="fuzzy -d 3 -c 2 -v 0.01 -s 42 -o data/xor/fuzzy3d.csv"
+./v3j generate fuzzy -d 3 -c 2 -v 0.01 -s 42 -o data/xor/fuzzy3d.csv
 ```
+
+## License
+
+**Copyright (c) 2025 Hieronim Kubica**
+
+This package is part of V3J, licensed under the MIT License. See the main [LICENSE](../../LICENSE) file for details.
