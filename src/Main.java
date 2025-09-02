@@ -1,17 +1,17 @@
 /*
- * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
- * terms.
+ * Copyright (c) 2025 Hieronim Kubica
+ * Licensed under the MIT License. See LICENSE file for full terms.
  */
-
-import data.Dataset;
-import data.DatasetGenerator;
-import data.strategy.ExactXorStrategy;
-import data.strategy.FuzzyXorStrategy;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import data.Dataset;
+import data.DatasetGenerator;
+import data.strategy.ExactXorStrategy;
+import data.strategy.FuzzyXorStrategy;
 import math.Quaternion;
 import ml.QuaternionPerceptron;
 import picocli.CommandLine;
@@ -234,15 +234,36 @@ class TrainCommand implements Runnable {
         dataset.data.stream()
             .map(
                 dp -> {
-                  double x = dp.getCoordinate(0);
-                  double y = dp.getCoordinate(1);
-                  // Replace 0s with -1s and add z-offset to ensure distinct quaternion
-                  // representations
-                  double quatX = (Math.abs(x) < 1e-10) ? -1.0 : x;
-                  double quatY = (Math.abs(y) < 1e-10) ? -1.0 : y;
+                  // Map dataset coordinates to quaternion components based on
+                  // dimensionality
+                  double w, x, y, z;
 
-                  // Create quaternion with w=0 to represent pure quaternions, then normalize
-                  return new Quaternion(0.0, quatX, quatY, 0.5).normalize();
+                  if (dataset.numDimensions == 2) {
+                    // For 2D: map (x, y) to (w=0.5, x, y, z=0.5)
+                    w = 0.5;
+                    x = dp.getCoordinate(0);
+                    y = dp.getCoordinate(1);
+                    z = 0.5;
+                  } else if (dataset.numDimensions == 4) {
+                    // For 4D: interpret coordinates directly as quaternion
+                    // components [w, x, y, z]
+                    w = dp.getCoordinate(0);
+                    x = dp.getCoordinate(1);
+                    y = dp.getCoordinate(2);
+                    z = dp.getCoordinate(3);
+                  } else {
+                    throw new IllegalArgumentException(
+                        "Unsupported dataset dimensionality: " + dataset.numDimensions);
+                  }
+
+                  // Replace zeros with 0.5 to avoid normalization issues
+                  if (Math.abs(w) < 1e-10) w = 0.5;
+                  if (Math.abs(x) < 1e-10) x = 0.5;
+                  if (Math.abs(y) < 1e-10) y = 0.5;
+                  if (Math.abs(z) < 1e-10) z = 0.5;
+
+                  // Create quaternion from the mapped components, then normalize
+                  return new Quaternion(w, x, y, z).normalize();
                 })
             .collect(Collectors.toList());
 
@@ -252,24 +273,74 @@ class TrainCommand implements Runnable {
     System.out.println("Initializing QuaternionPerceptron...");
     QuaternionPerceptron perceptron = new QuaternionPerceptron(42L);
 
-    System.out.println("Initial bias rotation: " + perceptron.getBiasRotation());
-    System.out.println("Initial action rotation: " + perceptron.getActionRotation());
+    System.out.println("Initial rotation: " + perceptron.getRotation());
 
     System.out.println("\nStarting training loop...");
     int epochs = 100;
 
     for (int epoch = 0; epoch < epochs; epoch++) {
+      // Shuffle the dataset and get fresh input/label lists
       dataset.shuffle();
-      perceptron.step(inputOrientations, binaryLabels);
+      List<Quaternion> shuffledInputs =
+          dataset.data.stream()
+              .map(
+                  dp -> {
+                    // Map dataset coordinates to quaternion components based on
+                    // dimensionality
+                    double w, x, y, z;
+
+                    if (dataset.numDimensions == 2) {
+                      // For 2D: map (x, y) to (w=0.5, x, y, z=0.5)
+                      w = 0.5;
+                      x = dp.getCoordinate(0);
+                      y = dp.getCoordinate(1);
+                      z = 0.5;
+                    } else if (dataset.numDimensions == 4) {
+                      // For 4D: interpret coordinates directly as quaternion
+                      // components [w, x, y,
+                      // z]
+                      w = dp.getCoordinate(0);
+                      x = dp.getCoordinate(1);
+                      y = dp.getCoordinate(2);
+                      z = dp.getCoordinate(3);
+                    } else {
+                      throw new IllegalArgumentException(
+                          "Unsupported dataset dimensionality: " + dataset.numDimensions);
+                    }
+
+                    // Replace zeros with 0.5 to avoid normalization issues
+                    if (Math.abs(w) < 1e-10) w = 0.5;
+                    if (Math.abs(x) < 1e-10) x = 0.5;
+                    if (Math.abs(y) < 1e-10) y = 0.5;
+                    if (Math.abs(z) < 1e-10) z = 0.5;
+
+                    // Create quaternion from the mapped components, then
+                    // normalize
+                    return new Quaternion(w, x, y, z).normalize();
+                  })
+              .collect(Collectors.toList());
+
+      List<Integer> shuffledLabels =
+          dataset.data.stream().map(dp -> dp.label()).collect(Collectors.toList());
+
+      // Mini-batch training: process 4 samples at a time
+      int batchSize = 16;
+      for (int i = 0; i < shuffledInputs.size(); i += batchSize) {
+        int endIndex = Math.min(i + batchSize, shuffledInputs.size());
+        List<Quaternion> batchInputs = shuffledInputs.subList(i, endIndex);
+        List<Integer> batchLabels = shuffledLabels.subList(i, endIndex);
+
+        perceptron.step(batchInputs, batchLabels);
+      }
 
       if (epoch % 10 == 0) {
-        // Compute training accuracy
+        // Compute training accuracy on the current shuffled data
         int correctPredictions = 0;
         double totalErrorMagnitude = 0.0;
 
-        for (int i = 0; i < inputOrientations.size(); i++) {
-          Quaternion input = inputOrientations.get(i);
-          int targetLabel = binaryLabels.get(i);
+        for (int i = 0; i < shuffledInputs.size(); i++) {
+          Quaternion input = shuffledInputs.get(i);
+          int targetLabel = shuffledLabels.get(i);
           int predicted = perceptron.classify(input);
 
           if (predicted == targetLabel) {
@@ -295,8 +366,8 @@ class TrainCommand implements Runnable {
           totalErrorMagnitude += errorMagnitude;
         }
 
-        double accuracy = (double) correctPredictions / inputOrientations.size();
-        double avgErrorMagnitude = totalErrorMagnitude / inputOrientations.size();
+        double accuracy = (double) correctPredictions / shuffledInputs.size();
+        double avgErrorMagnitude = totalErrorMagnitude / shuffledInputs.size();
 
         System.out.printf(
             "Epoch %3d: Training Accuracy: %.2f%%, Average Error Magnitude: %.6f%n",
@@ -305,8 +376,7 @@ class TrainCommand implements Runnable {
     }
 
     System.out.println("\nTraining completed!");
-    System.out.println("Final bias rotation: " + perceptron.getBiasRotation());
-    System.out.println("Final action rotation: " + perceptron.getActionRotation());
+    System.out.println("Final rotation: " + perceptron.getRotation());
 
     System.out.println("\nTesting on first few samples:");
     for (int i = 0; i < Math.min(5, inputOrientations.size()); i++) {
@@ -315,8 +385,8 @@ class TrainCommand implements Runnable {
       int predicted = perceptron.classify(input);
 
       System.out.printf(
-          "Sample %d: Input=(%.2f, %.2f), Target=%d, Predicted=%d%n",
-          i, input.getX(), input.getY(), targetLabel, predicted);
+          "Sample %d: Input=(%.2f, %.2f, %.2f, %.2f), Target=%d, Predicted=%d%n",
+          i, input.getW(), input.getX(), input.getY(), input.getZ(), targetLabel, predicted);
     }
   }
 }

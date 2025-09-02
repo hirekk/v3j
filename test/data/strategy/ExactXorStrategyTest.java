@@ -1,8 +1,7 @@
 /*
- * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
- * terms.
+ * Copyright (c) 2025 Hieronim Kubica
+ * Licensed under the MIT License. See LICENSE file for full terms.
  */
-
 package data.strategy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -10,14 +9,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import data.DataPoint;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import data.DataPoint;
 
 @DisplayName("ExactXorStrategy Tests")
 class ExactXorStrategyTest {

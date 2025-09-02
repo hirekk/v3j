@@ -1,8 +1,7 @@
 /*
- * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
- * terms.
+ * Copyright (c) 2025 Hieronim Kubica
+ * Licensed under the MIT License. See LICENSE file for full terms.
  */
-
 package data;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -17,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

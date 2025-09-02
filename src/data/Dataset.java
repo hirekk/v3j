@@ -1,8 +1,7 @@
 /*
- * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
- * terms.
+ * Copyright (c) 2025 Hieronim Kubica
+ * Licensed under the MIT License. See LICENSE file for full terms.
  */
-
 package data;
 
 import java.io.BufferedReader;

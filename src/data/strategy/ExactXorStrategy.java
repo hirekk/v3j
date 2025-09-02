@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
- * terms.
+ * Copyright (c) 2025 Hieronim Kubica
+ * Licensed under the MIT License. See LICENSE file for full terms.
  */
-
 package data.strategy;
 
-import data.DataPoint;
 import java.util.ArrayList;
 import java.util.List;
+
+import data.DataPoint;
 
 /**
  * Strategy for generating exact XOR-style datasets representing hypercube vertices.

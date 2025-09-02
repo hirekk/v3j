@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
- * terms.
+ * Copyright (c) 2025 Hieronim Kubica
+ * Licensed under the MIT License. See LICENSE file for full terms.
  */
-
 package data.strategy;
+
+import java.util.List;
 
 import data.DataPoint;
 import data.DatasetGenerator;
-import java.util.List;
 
 /**
  * Strategy interface for generating datasets with different algorithms and characteristics.

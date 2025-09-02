@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
- * terms.
+ * Copyright (c) 2025 Hieronim Kubica
+ * Licensed under the MIT License. See LICENSE file for full terms.
  */
-
 package data;
 
-import data.strategy.GenerationStrategy;
 import java.util.List;
+
+import data.strategy.GenerationStrategy;
 
 /**
  * Orchestrates dataset generation using the Strategy pattern.

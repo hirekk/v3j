@@ -1,14 +1,13 @@
 /*
- * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
- * terms.
+ * Copyright (c) 2025 Hieronim Kubica
+ * Licensed under the MIT License. See LICENSE file for full terms.
  */
-
 package ml;
 
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
-import math.Quaternion;
+
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.DecompositionSolver;
@@ -16,6 +15,8 @@ import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.linear.SingularMatrixException;
+
+import math.Quaternion;
 
 /**
  * A perceptron model that uses quaternions for weights, inputs, and outputs.
@@ -49,17 +50,8 @@ public final class QuaternionPerceptron {
   /** Random number generator for rotation initialization */
   private final Random random;
 
-  /**
-   * Bias rotation - Applied first as world-frame rotation: biasRotation * inputOrientation *
-   * actionRotation
-   */
-  private Quaternion biasRotation;
-
-  /**
-   * Action rotation - Applied last as local-frame rotation: biasRotation * inputOrientation *
-   * actionRotation
-   */
-  private Quaternion actionRotation;
+  /** Single rotation weight that transforms input orientations to target orientations */
+  private Quaternion rotation;
 
   // Constructors
   /**
@@ -70,9 +62,8 @@ public final class QuaternionPerceptron {
   public QuaternionPerceptron(long randomSeed) {
     this.random = new Random(randomSeed);
 
-    // Initialize rotations as random unit quaternions
-    this.biasRotation = initializeRandomUnitQuaternion();
-    this.actionRotation = initializeRandomUnitQuaternion();
+    // Initialize rotation as random unit quaternion
+    this.rotation = initializeRandomUnitQuaternion();
   }
 
   /** Constructs a QuaternionPerceptron with default random seed. */
@@ -83,29 +74,15 @@ public final class QuaternionPerceptron {
   // Public methods
 
   /**
-   * Returns the current bias rotation.
+   * Returns the current rotation weight.
    *
-   * <p>The biasRotation represents a world-frame rotation that is applied first in the quaternion
-   * chain biasRotation * inputOrientation * actionRotation. This rotation is independent of the
-   * inputOrientation.
+   * <p>The rotation represents the learned transformation that maps input orientations to target
+   * orientations.
    *
-   * @return the biasRotation quaternion
+   * @return the rotation quaternion
    */
-  public Quaternion getBiasRotation() {
-    return biasRotation;
-  }
-
-  /**
-   * Returns the current action rotation.
-   *
-   * <p>The actionRotation represents a local-frame rotation that is applied last in the quaternion
-   * chain biasRotation * inputOrientation * actionRotation. This rotation is applied relative to
-   * the transformed inputOrientation.
-   *
-   * @return the actionRotation quaternion
-   */
-  public Quaternion getActionRotation() {
-    return actionRotation;
+  public Quaternion getRotation() {
+    return rotation;
   }
 
   /**
@@ -120,15 +97,7 @@ public final class QuaternionPerceptron {
   /**
    * Performs the forward pass through the perceptron.
    *
-   * <p>Applies the quaternion chain: biasRotation * inputOrientation * actionRotation, where:
-   *
-   * <ul>
-   *   <li><strong>Bias rotation</strong> - Applied first as world-frame rotation
-   *   <li><strong>Input orientation</strong> - The input orientation quaternion
-   *   <li><strong>Action rotation</strong> - Applied last as local-frame rotation
-   * </ul>
-   *
-   * <p>This method assumes the input is a single quaternion representing an orientation.
+   * <p>Applies the learned rotation to transform the input orientation to the target orientation.
    *
    * @param inputOrientation the input orientation quaternion (must be a unit quaternion)
    * @return the transformed orientation quaternion
@@ -143,15 +112,13 @@ public final class QuaternionPerceptron {
       throw new IllegalArgumentException("Input quaternion must be a unit quaternion");
     }
 
-    // Apply the quaternion chain: biasRotation * inputOrientation * actionRotation
-    // This represents the composition of three rotations
-    Quaternion intermediate = biasRotation.multiply(inputOrientation);
-    Quaternion output = intermediate.multiply(actionRotation);
+    // Apply the learned rotation: rotation * inputOrientation
+    // This represents the transformation from input to target orientation
+    Quaternion output = rotation.multiply(inputOrientation);
 
     // The result should automatically be a unit quaternion since:
-    // - biasRotation is unit (initialized and maintained as unit)
+    // - rotation is unit (initialized and maintained as unit)
     // - inputOrientation is unit (validated above)
-    // - actionRotation is unit (initialized and maintained as unit)
     // - Quaternion multiplication preserves unit length
     return output;
   }
@@ -208,21 +175,20 @@ public final class QuaternionPerceptron {
   }
 
   /**
-   * Computes action and bias gradient fields in a single pass through the batch.
+   * Computes the rotation gradient field in a single pass through the batch.
    *
    * @param inputOrientations the input orientations
    * @param predictedOrientations the predicted orientations
    * @param targetOrientations the target orientations
-   * @return a GradientFields object containing both bias and action gradients
+   * @return a GradientFields object containing the rotation gradient
    */
   public GradientFields computeGradientFields(
       List<Quaternion> inputOrientations,
       List<Quaternion> predictedOrientations,
       List<Quaternion> targetOrientations) {
 
-    // Accumulate gradients across the batch
-    double[] biasGradientVector = {0.0, 0.0, 0.0};
-    double[] actionGradientVector = {0.0, 0.0, 0.0};
+    // Accumulate gradient across the batch
+    double[] rotationGradientVector = {0.0, 0.0, 0.0};
 
     for (int i = 0; i < inputOrientations.size(); i++) {
       Quaternion input = inputOrientations.get(i);
@@ -242,71 +208,44 @@ public final class QuaternionPerceptron {
         continue;
       }
 
-      // Convert quaternions to rotation vectors using Lie algebra mapping
-      // This maps from the quaternion group (SO(3)) to its tangent space (so(3))
+      // Convert error to rotation vector in tangent space
       double[] vError = error.log().getVector();
-      double[] vInput = input.log().getVector();
-      double[] vAction = actionRotation.log().getVector();
-      double[] vBias = biasRotation.log().getVector();
 
-      // Form basis from {v_bias, v_input, v_action} in the tangent space
-      double[][] basis = {vBias, vInput, vAction};
-
-      try {
-        // Find coefficients of v_error in the basis {v_bias, v_input, v_action}
-        double[] coefficients = solveLinearSystem3x3(basis, vError);
-
-        // Update bias and action in the opposite direction of the gradient, scaled by coefficients
-        // and adaptive rate
-        for (int j = 0; j < 3; j++) {
-          // Bias update: opposite direction, scaled by coefficient[0] and adaptive rate
-          biasGradientVector[j] += 0.01 * coefficients[0] * adaptiveRate;
-
-          // Action update: opposite direction, scaled by coefficient[2] and adaptive rate
-          actionGradientVector[j] += 0.01 * coefficients[2] * adaptiveRate;
-        }
-
-      } catch (SingularMatrixException e) {
-        // Skip this sample if basis is linearly dependent
-        continue;
+      // Scale by adaptive rate and accumulate
+      // Use smaller learning rate for stability
+      double learningRate = 0.003 * adaptiveRate;
+      for (int j = 0; j < 3; j++) {
+        rotationGradientVector[j] += vError[j] * learningRate;
       }
     }
 
-    // Create gradient quaternions from accumulated vectors
-    Quaternion biasGradient = Quaternion.fromRotationVector(biasGradientVector);
-    Quaternion actionGradient = Quaternion.fromRotationVector(actionGradientVector);
+    // Create gradient quaternion from accumulated vector
+    Quaternion rotationGradient = Quaternion.fromRotationVector(rotationGradientVector);
 
-    return new GradientFields(biasGradient, actionGradient);
+    return new GradientFields(rotationGradient, rotationGradient);
   }
 
   // TODO: early stopping
   /**
-   * Updates the rotations using the computed gradient fields via exponential map.
+   * Updates the rotation using the computed gradient field via exponential map.
    *
-   * @param gradientFields the gradient fields for both bias and action rotations
+   * @param gradientFields the gradient fields containing the rotation gradient
    */
   private void updateRotations(GradientFields gradientFields) {
-    // Update bias rotation (world frame) - left multiplication
+    // Update rotation using the gradient
     // Use inverse of gradient to move in opposite direction (gradient descent)
-    double[] biasVector = gradientFields.biasGradient.toRotationVector();
-    Quaternion biasUpdate = Quaternion.fromRotationVector(biasVector).inverse();
-    biasRotation = biasUpdate.multiply(biasRotation);
-
-    // Update action rotation (local frame) - right multiplication
-    // Use inverse of gradient to move in opposite direction (gradient descent)
-    double[] actionVector = gradientFields.actionGradient.toRotationVector();
-    Quaternion actionUpdate = Quaternion.fromRotationVector(actionVector).inverse();
-    actionRotation = actionRotation.multiply(actionUpdate);
+    double[] rotationVector = gradientFields.rotationGradient.toRotationVector();
+    Quaternion rotationUpdate = Quaternion.fromRotationVector(rotationVector).inverse();
+    rotation = rotationUpdate.multiply(rotation);
   }
 
   /** Result container for gradient fields computed from a batch. */
   public static class GradientFields {
-    public final Quaternion biasGradient;
-    public final Quaternion actionGradient;
+    public final Quaternion rotationGradient;
 
-    public GradientFields(Quaternion biasGradient, Quaternion actionGradient) {
-      this.biasGradient = biasGradient;
-      this.actionGradient = actionGradient;
+    public GradientFields(Quaternion rotationGradient, Quaternion unused) {
+      this.rotationGradient = rotationGradient;
+      // Keep second parameter for backward compatibility during refactoring
     }
   }
 

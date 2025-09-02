@@ -60,12 +60,22 @@ tasks.withType(JavaCompile).configureEach {
 
 spotless {
     java {
-        googleJavaFormat()
+        // Use Google Java Format with specific version for consistency
+        googleJavaFormat('1.28.0')
+        
+        // Import organization
+        importOrder('java', 'javax', 'org', 'com', '')
         removeUnusedImports()
+        
+        // Code formatting
         trimTrailingWhitespace()
         endWithNewline()
+        licenseHeaderFile 'LICENSE_HEADER'
     }
 }
+
+// Apply spotless before build
+build.dependsOn spotlessApply
 
 jacocoTestReport {
     reports {

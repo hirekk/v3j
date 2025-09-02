@@ -1,8 +1,7 @@
 /*
- * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
- * terms.
+ * Copyright (c) 2025 Hieronim Kubica
+ * Licensed under the MIT License. See LICENSE file for full terms.
  */
-
 package ml;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -15,11 +14,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
-import math.Quaternion;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import math.Quaternion;
 
 /**
  * Tests for {@link QuaternionPerceptron}.
@@ -40,8 +41,7 @@ class QuaternionPerceptronTest {
     void testDefaultConstructor() {
       QuaternionPerceptron perceptron = new QuaternionPerceptron();
 
-      assertNotNull(perceptron.getBiasRotation());
-      assertNotNull(perceptron.getActionRotation());
+      assertNotNull(perceptron.getRotation());
     }
 
     @Test
@@ -51,8 +51,7 @@ class QuaternionPerceptronTest {
 
       QuaternionPerceptron perceptron = new QuaternionPerceptron(randomSeed);
 
-      assertNotNull(perceptron.getBiasRotation());
-      assertNotNull(perceptron.getActionRotation());
+      assertNotNull(perceptron.getRotation());
     }
 
     @Test
@@ -63,8 +62,7 @@ class QuaternionPerceptronTest {
       QuaternionPerceptron perceptron1 = new QuaternionPerceptron(seed);
       QuaternionPerceptron perceptron2 = new QuaternionPerceptron(seed);
 
-      assertEquals(perceptron1.getBiasRotation(), perceptron2.getBiasRotation());
-      assertEquals(perceptron1.getActionRotation(), perceptron2.getActionRotation());
+      assertEquals(perceptron1.getRotation(), perceptron2.getRotation());
     }
 
     @Test
@@ -73,8 +71,7 @@ class QuaternionPerceptronTest {
       QuaternionPerceptron perceptron1 = new QuaternionPerceptron(1L);
       QuaternionPerceptron perceptron2 = new QuaternionPerceptron(2L);
 
-      assertNotEquals(perceptron1.getBiasRotation(), perceptron2.getBiasRotation());
-      assertNotEquals(perceptron1.getActionRotation(), perceptron2.getActionRotation());
+      assertNotEquals(perceptron1.getRotation(), perceptron2.getRotation());
     }
   }
 
@@ -87,17 +84,11 @@ class QuaternionPerceptronTest {
     void testWeightsAreValidUnitQuaternions() {
       QuaternionPerceptron perceptron = new QuaternionPerceptron(42L);
 
-      Quaternion bias = perceptron.getBiasRotation();
-      Quaternion action = perceptron.getActionRotation();
+      Quaternion rotation = perceptron.getRotation();
 
       // Check basic properties
-      assertTrue(bias.isUnit(), "Bias should be a unit quaternion");
-      assertTrue(action.isUnit(), "Action should be a unit quaternion");
-      assertFalse(bias.isZero(), "Bias should not be zero");
-      assertFalse(action.isZero(), "Action should not be zero");
-
-      // Check that they're different (random initialization)
-      assertNotEquals(bias, action);
+      assertTrue(rotation.isUnit(), "Rotation should be a unit quaternion");
+      assertFalse(rotation.isZero(), "Rotation should not be zero");
     }
 
     @Test
@@ -110,8 +101,8 @@ class QuaternionPerceptronTest {
       // Try up to 5 different random initializations to ensure robustness
       for (int attempt = 0; attempt < 5; attempt++) {
         QuaternionPerceptron newPerceptron = new QuaternionPerceptron(42L + attempt);
-        Quaternion newBias = newPerceptron.getBiasRotation();
-        Quaternion newAction = newPerceptron.getActionRotation();
+        Quaternion newBias = newPerceptron.getRotation();
+        Quaternion newAction = newPerceptron.getRotation();
 
         double biasDistance = newBias.subtract(Quaternion.ONE).norm();
         double actionDistance = newAction.subtract(Quaternion.ONE).norm();
@@ -146,8 +137,8 @@ class QuaternionPerceptronTest {
       for (int attempt = 0; attempt < 5; attempt++) {
         QuaternionPerceptron perceptron = new QuaternionPerceptron(42L + attempt);
 
-        Quaternion bias = perceptron.getBiasRotation();
-        Quaternion action = perceptron.getActionRotation();
+        Quaternion bias = perceptron.getRotation();
+        Quaternion action = perceptron.getRotation();
 
         // These should always be true regardless of random variation
         assertTrue(bias.isUnit(), "Bias should always be unit length");
@@ -172,8 +163,8 @@ class QuaternionPerceptronTest {
     @Test
     @DisplayName("Bias and action weights are accessible")
     void testWeightAccess() {
-      Quaternion bias = perceptron.getBiasRotation();
-      Quaternion action = perceptron.getActionRotation();
+      Quaternion bias = perceptron.getRotation();
+      Quaternion action = perceptron.getRotation();
 
       assertNotNull(bias);
       assertNotNull(action);
@@ -268,21 +259,20 @@ class QuaternionPerceptronTest {
     }
 
     @Test
-    @DisplayName("Forward pass applies bias and action weights")
+    @DisplayName("Forward pass applies rotation weight")
     void testForwardAppliesWeights() {
       // Create a simple input
       Quaternion input = Quaternion.ONE;
 
-      // Get current weights
-      Quaternion bias = perceptron.getBiasRotation();
-      Quaternion action = perceptron.getActionRotation();
+      // Get current rotation
+      Quaternion rotation = perceptron.getRotation();
 
       // Perform forward pass
       Quaternion output = perceptron.forward(input);
 
-      // Output should equal bias * input * action
-      Quaternion expected = bias.multiply(input).multiply(action);
-      assertEquals(expected, output, "Forward pass should equal bias * input * action");
+      // Output should equal rotation * input
+      Quaternion expected = rotation.multiply(input);
+      assertEquals(expected, output, "Forward pass should equal rotation * input");
     }
   }
 
@@ -413,16 +403,14 @@ class QuaternionPerceptronTest {
               );
       List<Integer> testLabels = Arrays.asList(0, 1);
 
-      // Store initial weights
-      Quaternion initialBias = perceptron.getBiasRotation();
-      Quaternion initialAction = perceptron.getActionRotation();
+      // Store initial rotation
+      Quaternion initialRotation = perceptron.getRotation();
 
       // Perform training step
       perceptron.step(testInputs, testLabels);
 
-      // Weights should have changed
-      assertNotEquals(initialBias, perceptron.getBiasRotation());
-      assertNotEquals(initialAction, perceptron.getActionRotation());
+      // Rotation should have changed
+      assertNotEquals(initialRotation, perceptron.getRotation());
     }
 
     @Test
@@ -436,9 +424,8 @@ class QuaternionPerceptronTest {
 
       perceptron.step(testInputs, testLabels);
 
-      // Weights should remain unit quaternions
-      assertTrue(perceptron.getBiasRotation().isUnit(), "Bias should remain unit");
-      assertTrue(perceptron.getActionRotation().isUnit(), "Action should remain unit");
+      // Rotation should remain unit quaternion
+      assertTrue(perceptron.getRotation().isUnit(), "Rotation should remain unit");
     }
 
     @Test
@@ -450,9 +437,8 @@ class QuaternionPerceptronTest {
       // Should not throw exception
       assertDoesNotThrow(() -> perceptron.step(singleInput, singleLabel));
 
-      // Weights should remain unit
-      assertTrue(perceptron.getBiasRotation().isUnit());
-      assertTrue(perceptron.getActionRotation().isUnit());
+      // Rotation should remain unit
+      assertTrue(perceptron.getRotation().isUnit());
     }
 
     @Test
@@ -464,9 +450,8 @@ class QuaternionPerceptronTest {
       // Should not throw exception
       assertDoesNotThrow(() -> perceptron.step(emptyInputs, emptyLabels));
 
-      // Weights should remain unit
-      assertTrue(perceptron.getBiasRotation().isUnit());
-      assertTrue(perceptron.getActionRotation().isUnit());
+      // Rotation should remain unit
+      assertTrue(perceptron.getRotation().isUnit());
     }
 
     @Test
@@ -486,9 +471,8 @@ class QuaternionPerceptronTest {
       // Should not throw exception
       assertDoesNotThrow(() -> perceptron.step(complexInputs, complexLabels));
 
-      // Weights should remain unit
-      assertTrue(perceptron.getBiasRotation().isUnit());
-      assertTrue(perceptron.getActionRotation().isUnit());
+      // Rotation should remain unit
+      assertTrue(perceptron.getRotation().isUnit());
     }
   }
 
@@ -517,12 +501,10 @@ class QuaternionPerceptronTest {
           perceptron.computeGradientFields(inputs, predicted, targets);
 
       assertNotNull(result);
-      assertNotNull(result.biasGradient);
-      assertNotNull(result.actionGradient);
+      assertNotNull(result.rotationGradient);
 
-      // Gradients should be unit quaternions
-      assertTrue(result.biasGradient.isUnit());
-      assertTrue(result.actionGradient.isUnit());
+      // Gradient should be unit quaternion
+      assertTrue(result.rotationGradient.isUnit());
     }
 
     @Test
@@ -536,12 +518,10 @@ class QuaternionPerceptronTest {
           perceptron.computeGradientFields(emptyInputs, emptyPredicted, emptyTargets);
 
       assertNotNull(result);
-      assertNotNull(result.biasGradient);
-      assertNotNull(result.actionGradient);
+      assertNotNull(result.rotationGradient);
 
-      // Should return identity rotations for empty batch
-      assertEquals(Quaternion.ONE, result.biasGradient);
-      assertEquals(Quaternion.ONE, result.actionGradient);
+      // Should return identity rotation for empty batch
+      assertEquals(Quaternion.ONE, result.rotationGradient);
     }
 
     @Test
@@ -555,8 +535,7 @@ class QuaternionPerceptronTest {
           perceptron.computeGradientFields(inputs, predicted, targets);
 
       assertNotNull(result);
-      assertTrue(result.biasGradient.isUnit());
-      assertTrue(result.actionGradient.isUnit());
+      assertTrue(result.rotationGradient.isUnit());
     }
 
     @Test
@@ -571,13 +550,12 @@ class QuaternionPerceptronTest {
           perceptron.computeGradientFields(inputs, predicted, targets);
 
       assertNotNull(result);
-      assertTrue(result.biasGradient.isUnit());
-      assertTrue(result.actionGradient.isUnit());
+      assertTrue(result.rotationGradient.isUnit());
 
       // Should not be identity for large error (but may be due to numerical precision)
       // Just verify they are valid unit quaternions
-      assertTrue(result.biasGradient.isUnit());
-      assertTrue(result.actionGradient.isUnit());
+      assertTrue(result.rotationGradient.isUnit());
+      assertTrue(result.rotationGradient.isUnit());
     }
   }
 
@@ -588,30 +566,23 @@ class QuaternionPerceptronTest {
     @Test
     @DisplayName("GradientFields construction and access")
     void testGradientFieldsConstruction() {
-      Quaternion biasGrad = Quaternion.ONE;
-      Quaternion actionGrad = Quaternion.I;
+      Quaternion rotationGrad = Quaternion.ONE;
 
       QuaternionPerceptron.GradientFields fields =
-          new QuaternionPerceptron.GradientFields(biasGrad, actionGrad);
+          new QuaternionPerceptron.GradientFields(rotationGrad, rotationGrad);
 
-      assertEquals(biasGrad, fields.biasGradient);
-      assertEquals(actionGrad, fields.actionGradient);
+      assertEquals(rotationGrad, fields.rotationGradient);
     }
 
     @Test
-    @DisplayName("GradientFields with different gradients")
-    void testGradientFieldsDifferentGradients() {
-      Quaternion biasGrad = new Quaternion(0.8, 0.2, 0.0, 0.0);
-      Quaternion quaternion = new Quaternion(0.0, 0.9, 0.1, 0.0);
+    @DisplayName("GradientFields with same gradient")
+    void testGradientFieldsSameGradient() {
+      Quaternion rotationGrad = new Quaternion(0.8, 0.2, 0.0, 0.0);
 
       QuaternionPerceptron.GradientFields fields =
-          new QuaternionPerceptron.GradientFields(biasGrad, quaternion);
+          new QuaternionPerceptron.GradientFields(rotationGrad, rotationGrad);
 
-      assertEquals(biasGrad, fields.biasGradient);
-      assertEquals(quaternion, fields.actionGradient);
-
-      // Should be different
-      assertNotEquals(fields.biasGradient, fields.actionGradient);
+      assertEquals(rotationGrad, fields.rotationGradient);
     }
   }
 }

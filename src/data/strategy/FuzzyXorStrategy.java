@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2025 Hieronim Kubica. Licensed under the MIT License. See LICENSE file for full
- * terms.
+ * Copyright (c) 2025 Hieronim Kubica
+ * Licensed under the MIT License. See LICENSE file for full terms.
  */
-
 package data.strategy;
 
-import data.DataPoint;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+
+import data.DataPoint;
 
 /**
  * Strategy for generating fuzzy XOR-style datasets with Gaussian noise around hypercube vertices.
