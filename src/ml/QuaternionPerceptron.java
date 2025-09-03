@@ -8,37 +8,13 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.ArrayRealVector;
-import org.apache.commons.math3.linear.DecompositionSolver;
-import org.apache.commons.math3.linear.LUDecomposition;
-import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.linear.RealVector;
-import org.apache.commons.math3.linear.SingularMatrixException;
-
 import math.Quaternion;
 
 /**
- * A perceptron model that uses quaternions for weights, inputs, and outputs.
+ * Quaternion-based perceptron for binary classification of 3D orientations.
  *
- * <p>This implementation uses two quaternion weights, representing rotations, that operate in
- * different coordinate frames:
- *
- * <ul>
- *   <li><strong>Bias rotation</strong> - Applied first as world-frame rotation: biasRotation *
- *       inputOrientation * actionRotation. This rotation is independent of the inputOrientation's
- *       orientation (global coordinate system)
- *   <li><strong>Action rotation</strong> - Applied last as local-frame rotation: biasRotation *
- *       inputOrientation * actionRotation. This rotation is applied relative to the
- *       inputOrientation's transformed orientation
- * </ul>
- *
- * <p>The quaternion chain biasRotation * inputOrientation * actionRotation allows the model to
- * learn both global transformations and input-specific adjustments through separate rotation
- * parameters.
- *
- * <p>The learning rate is adaptive and based on the cross product magnitude between predicted and
- * target orientations, providing automatic convergence as errors approach zero.
+ * <p>Uses a single rotation weight to transform input orientations. The learning rate is adaptive
+ * based on error magnitude for automatic convergence.
  *
  * @see Quaternion
  */
@@ -86,22 +62,20 @@ public final class QuaternionPerceptron {
   }
 
   /**
-   * Returns the random seed used for initialization.
+   * Returns a random long value from the internal random generator.
    *
-   * @return the random seed value
+   * @return a random long value
    */
   public long getRandomSeed() {
-    return random.nextLong(); // Note: This returns a new random value, not the original seed
+    return random.nextLong();
   }
 
   /**
-   * Performs the forward pass through the perceptron.
+   * Performs the forward pass: rotation * inputOrientation.
    *
-   * <p>Applies the learned rotation to transform the input orientation to the target orientation.
-   *
-   * @param inputOrientation the input orientation quaternion (must be a unit quaternion)
+   * @param inputOrientation the input orientation quaternion (must be unit)
    * @return the transformed orientation quaternion
-   * @throws IllegalArgumentException if input is null or not a unit quaternion
+   * @throws IllegalArgumentException if input is null or not unit
    */
   public Quaternion forward(Quaternion inputOrientation) {
     if (inputOrientation == null) {
@@ -124,10 +98,7 @@ public final class QuaternionPerceptron {
   }
 
   /**
-   * Classifies an input by converting the predicted quaternion to a binary label.
-   *
-   * <p>Compares the predicted quaternion to the representations of 0 and 1 target quaternions and
-   * assigns the label based on minimum distance.
+   * Classifies input by comparing predicted quaternion to target representations.
    *
    * @param inputOrientation the input orientation quaternion
    * @return the predicted binary label (0 or 1)
@@ -175,12 +146,12 @@ public final class QuaternionPerceptron {
   }
 
   /**
-   * Computes the rotation gradient field in a single pass through the batch.
+   * Computes rotation gradient field from batch of inputs, predictions, and targets.
    *
    * @param inputOrientations the input orientations
    * @param predictedOrientations the predicted orientations
    * @param targetOrientations the target orientations
-   * @return a GradientFields object containing the rotation gradient
+   * @return gradient fields containing the rotation gradient
    */
   public GradientFields computeGradientFields(
       List<Quaternion> inputOrientations,
@@ -250,35 +221,7 @@ public final class QuaternionPerceptron {
   }
 
   /**
-   * Solves a 3x3 linear system Ax = b using Apache Commons Math.
-   *
-   * @param A the coefficient matrix (3x3)
-   * @param b the right-hand side vector (3 elements)
-   * @return the solution vector x
-   * @throws SingularMatrixException if the basis vectors are linearly dependent
-   */
-  private double[] solveLinearSystem3x3(double[][] A, double[] b) {
-    if (A.length != 3 || A[0].length != 3 || b.length != 3) {
-      throw new IllegalArgumentException("Matrix A must be 3x3 and vector b must have 3 elements");
-    }
-
-    // Create RealMatrix and RealVector from arrays
-    RealMatrix matrix = new Array2DRowRealMatrix(A);
-    RealVector vector = new ArrayRealVector(b);
-
-    // Use LU decomposition for solving
-    DecompositionSolver solver = new LUDecomposition(matrix).getSolver();
-    RealVector solution = solver.solve(vector);
-
-    return solution.toArray();
-  }
-
-  /**
-   * Initializes a random unit quaternion for rotation initialization.
-   *
-   * <p>Creates a quaternion near the identity (1, 0, 0, 0) with small random perturbation, then
-   * normalizes to unit length. This ensures the initial rotations represent small rotations around
-   * the identity.
+   * Initializes a random unit quaternion near identity with small perturbations.
    *
    * @return a random unit quaternion
    */

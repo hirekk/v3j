@@ -83,6 +83,26 @@ class QuaternionTest {
       assertEquals(3.14159, q.getY(), EPSILON);
       assertEquals(-4.2, q.getZ(), EPSILON);
     }
+
+    @Test
+    @DisplayName("Construction with NaN components")
+    void testConstructionWithNaN() {
+      assertThrows(IllegalArgumentException.class, () -> new Quaternion(Double.NaN, 1.0, 2.0, 3.0));
+      assertThrows(IllegalArgumentException.class, () -> new Quaternion(1.0, Double.NaN, 2.0, 3.0));
+      assertThrows(IllegalArgumentException.class, () -> new Quaternion(1.0, 2.0, Double.NaN, 3.0));
+      assertThrows(IllegalArgumentException.class, () -> new Quaternion(1.0, 2.0, 3.0, Double.NaN));
+    }
+
+    @Test
+    @DisplayName("Construction with infinite components")
+    void testConstructionWithInfinite() {
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> new Quaternion(Double.POSITIVE_INFINITY, 1.0, 2.0, 3.0));
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> new Quaternion(1.0, Double.NEGATIVE_INFINITY, 2.0, 3.0));
+    }
   }
 
   @Nested
@@ -208,6 +228,12 @@ class QuaternionTest {
     }
 
     @Test
+    @DisplayName("Addition with null quaternion")
+    void testAddWithNull() {
+      assertThrows(IllegalArgumentException.class, () -> q1.add(null));
+    }
+
+    @Test
     @DisplayName("Addition with zero quaternion")
     void testAddWithZero() {
       Quaternion result = q1.add(Quaternion.ZERO);
@@ -228,6 +254,12 @@ class QuaternionTest {
     }
 
     @Test
+    @DisplayName("Subtraction with null quaternion")
+    void testSubtractWithNull() {
+      assertThrows(IllegalArgumentException.class, () -> q1.subtract(null));
+    }
+
+    @Test
     @DisplayName("Subtraction from zero")
     void testSubtractFromZero() {
       Quaternion result = Quaternion.ZERO.subtract(q1);
@@ -245,6 +277,12 @@ class QuaternionTest {
       assertEquals(-2.0, result.getX(), EPSILON);
       assertEquals(8.0, result.getY(), EPSILON);
       assertEquals(16.0, result.getZ(), EPSILON);
+    }
+
+    @Test
+    @DisplayName("Multiplication with null quaternion")
+    void testMultiplyWithNull() {
+      assertThrows(IllegalArgumentException.class, () -> q1.multiply(null));
     }
 
     @Test
@@ -465,6 +503,12 @@ class QuaternionTest {
     }
 
     @Test
+    @DisplayName("Dot product with null quaternion")
+    void testDotWithNull() {
+      assertThrows(IllegalArgumentException.class, () -> q1.dot(null));
+    }
+
+    @Test
     @DisplayName("Dot product with zero")
     void testDotWithZero() {
       assertEquals(0.0, q1.dot(Quaternion.ZERO), EPSILON);
@@ -680,6 +724,14 @@ class QuaternionTest {
     @DisplayName("Axis-angle with null axis")
     void testFromAxisAngleNullAxis() {
       assertThrows(NullPointerException.class, () -> Quaternion.fromAxisAngle(Math.PI, null));
+    }
+
+    @Test
+    @DisplayName("Axis-angle with invalid axis length")
+    void testFromAxisAngleInvalidAxisLength() {
+      double[] invalidAxis = {1.0, 2.0}; // Only 2 components
+      assertThrows(
+          IllegalArgumentException.class, () -> Quaternion.fromAxisAngle(Math.PI, invalidAxis));
     }
 
     @Test
@@ -970,6 +1022,14 @@ class QuaternionTest {
       assertThrows(
           IllegalArgumentException.class,
           () -> Quaternion.slerp(Quaternion.ONE, Quaternion.I, -0.5));
+    }
+
+    @Test
+    @DisplayName("SLERP with null quaternions")
+    void testSlerpWithNull() {
+      assertThrows(IllegalArgumentException.class, () -> Quaternion.slerp(null, Quaternion.I, 0.5));
+      assertThrows(
+          IllegalArgumentException.class, () -> Quaternion.slerp(Quaternion.ONE, null, 0.5));
     }
   }
 

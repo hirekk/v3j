@@ -18,14 +18,9 @@ java {
     }
 }
 
-// Modern source set configuration
 sourceSets {
     main.java.srcDirs = ['src']
     test.java.srcDirs = ['test']
-}
-
-repositories {
-    mavenCentral()
 }
 
 dependencies {
@@ -43,7 +38,6 @@ application {
 test {
     useJUnitPlatform()
     
-    // Show test results with summary
     testLogging {
         events = ["failed"]
         exceptionFormat = "full"
@@ -52,7 +46,6 @@ test {
     }
 }
 
-// Modern task configuration
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.compilerArgs += ['-Xlint:unchecked']
@@ -60,21 +53,15 @@ tasks.withType(JavaCompile).configureEach {
 
 spotless {
     java {
-        // Use Google Java Format with specific version for consistency
-        googleJavaFormat('1.28.0')
-        
-        // Import organization
+        googleJavaFormat('1.28.0')        
         importOrder('java', 'javax', 'org', 'com', '')
         removeUnusedImports()
-        
-        // Code formatting
         trimTrailingWhitespace()
         endWithNewline()
         licenseHeaderFile 'LICENSE_HEADER'
     }
 }
 
-// Apply spotless before build
 build.dependsOn spotlessApply
 
 jacocoTestReport {
@@ -99,7 +86,6 @@ jacocoTestReport {
 
 test.finalizedBy jacocoTestReport
 
-// Create executable JAR with dependencies
 jar {
     archiveBaseName.set('v3j')
     archiveClassifier.set('')
@@ -108,11 +94,9 @@ jar {
         attributes 'Main-Class': 'Main'
     }
     
-    // Include all dependencies in the JAR
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
     
-    // Avoid duplicate files
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

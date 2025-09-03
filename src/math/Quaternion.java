@@ -7,47 +7,16 @@ package math;
 import java.util.Objects;
 
 /**
- * Represents a quaternion in the form w + xi + yj + zk where w, x, y, z are real numbers.
+ * Immutable quaternion for 3D rotations and orientations.
  *
- * <p>Quaternions extend complex numbers and are useful for representing 3D rotations and
- * orientations. This class provides comprehensive mathematical operations including arithmetic,
- * exponential functions, rotation conversions, and interpolation methods.
+ * <p>Provides arithmetic operations, Lie group mappings (exp/log), rotation conversions, and
+ * interpolation. All operations return new instances.
  *
- * <p>The class is immutable and thread-safe. All operations return new Quaternion instances.
- *
- * <p><strong>Mathematical Foundation:</strong> Quaternions form a Lie group (SO(3)) with a
- * corresponding Lie algebra (so(3)). The exponential map exp: so(3) → SO(3) and logarithm map log:
- * SO(3) → so(3) provide the connection between the tangent space and the group.
- *
- * <p>Mathematical operations follow standard quaternion algebra rules:
- *
- * <ul>
- *   <li>i² = j² = k² = ijk = -1
- *   <li>ij = k, ji = -k
- *   <li>jk = i, kj = -i
- *   <li>ki = j, ik = -j
- * </ul>
- *
- * <p><strong>Lie Group Operations:</strong> For unit quaternions (SO(3)):
- *
- * <ul>
- *   <li><code>exp()</code>: Maps from tangent space (so(3)) to quaternion group (SO(3))
- *   <li><code>log()</code>: Maps from quaternion group (SO(3)) to tangent space (so(3))
- *   <li><code>log().getVector()</code>: Extracts the rotation vector in tangent space
- * </ul>
- *
- * <p><strong>Example Usage:</strong>
+ * <p>Example usage:
  *
  * <pre>{@code
- * // Create a rotation quaternion (90 degrees around Z-axis)
- * Quaternion rotation = Quaternion.fromAxisAngle(Math.PI / 2, new double[] {0, 0, 1});
- *
- * // Map to tangent space (Lie algebra)
- * Quaternion logRotation = rotation.log();
- * double[] rotationVector = logRotation.getVector(); // [0, 0, π/2]
- *
- * // Map back to quaternion group
- * Quaternion reconstructed = logRotation.exp(); // Should equal rotation
+ * Quaternion rotation = Quaternion.fromAxisAngle(Math.PI/2, new double[]{0, 0, 1});
+ * double[] rotationVector = rotation.log().getVector(); // [0, 0, π/2]
  * }</pre>
  */
 public final class Quaternion {
@@ -78,8 +47,8 @@ public final class Quaternion {
   /** Unit vector quaternion: 0 + 0i + 0j + 1k */
   public static final Quaternion K = new Quaternion(0.0, 0.0, 0.0, 1.0);
 
-  /** Numerical stability threshold */
-  private static final double NUMERICAL_STABILITY_THRESHOLD = 1e-10;
+  /** Numerical stability threshold for floating-point comparisons */
+  private static final double EPSILON = 1e-10;
 
   /**
    * Constructs a quaternion with the specified components.
@@ -205,7 +174,7 @@ public final class Quaternion {
    * @return true if the quaternion is normalized, false otherwise
    */
   public boolean isUnit() {
-    return Math.abs(norm() - 1.0) < 1e-10;
+    return Math.abs(norm() - 1.0) < EPSILON;
   }
 
   /**
@@ -222,8 +191,12 @@ public final class Quaternion {
    *
    * @param other the quaternion to add
    * @return a new quaternion representing the sum
+   * @throws IllegalArgumentException if other is null
    */
   public Quaternion add(Quaternion other) {
+    if (other == null) {
+      throw new IllegalArgumentException("Other quaternion cannot be null");
+    }
     return new Quaternion(w + other.w, x + other.x, y + other.y, z + other.z);
   }
 
@@ -232,8 +205,12 @@ public final class Quaternion {
    *
    * @param other the quaternion to subtract
    * @return a new quaternion representing the difference
+   * @throws IllegalArgumentException if other is null
    */
   public Quaternion subtract(Quaternion other) {
+    if (other == null) {
+      throw new IllegalArgumentException("Other quaternion cannot be null");
+    }
     return new Quaternion(w - other.w, x - other.x, y - other.y, z - other.z);
   }
 
@@ -245,8 +222,12 @@ public final class Quaternion {
    *
    * @param other the quaternion to multiply by
    * @return a new quaternion representing the product
+   * @throws IllegalArgumentException if other is null
    */
   public Quaternion multiply(Quaternion other) {
+    if (other == null) {
+      throw new IllegalArgumentException("Other quaternion cannot be null");
+    }
     return new Quaternion(
         w * other.w - x * other.x - y * other.y - z * other.z,
         w * other.x + x * other.w + y * other.z - z * other.y,
@@ -347,19 +328,17 @@ public final class Quaternion {
    *
    * @param other the quaternion to compute dot product with
    * @return the scalar dot product w₁w₂ + x₁x₂ + y₁y₂ + z₁z₂
+   * @throws IllegalArgumentException if other is null
    */
   public double dot(Quaternion other) {
+    if (other == null) {
+      throw new IllegalArgumentException("Other quaternion cannot be null");
+    }
     return w * other.w + x * other.x + y * other.y + z * other.z;
   }
 
   /**
-   * Computes the true quaternion cross product.
-   *
-   * <p>For quaternions q₁ = w₁ + v₁ and q₂ = w₂ + v₂, the quaternion cross product is: q₁ × q₂ =
-   * (w₁v₂ - w₂v₁ + v₁ × v₂, w₁w₂ - v₁·v₂)
-   *
-   * <p>This is the mathematically correct quaternion cross product, not to be confused with the 3D
-   * vector cross product of the vector parts.
+   * Computes the quaternion cross product: q₁ × q₂ = (w₁v₂ - w₂v₁ + v₁ × v₂, w₁w₂ - v₁·v₂).
    *
    * @param other the quaternion to compute cross product with
    * @return a new quaternion representing the quaternion cross product
@@ -397,14 +376,10 @@ public final class Quaternion {
   }
 
   /**
-   * Computes the 3D vector cross product of the vector parts of two quaternions.
+   * Computes the 3D vector cross product of the vector parts.
    *
-   * <p>This method extracts the vector parts of both quaternions and computes their 3D cross
-   * product. The result is a vector quaternion (w = 0) representing the cross product in 3D space.
-   *
-   * <p><strong>Use Case:</strong> When you need the 3D vector cross product for geometric
-   * operations, not the quaternion cross product. For quaternion operations, use <code>cross()
-   * </code> instead.
+   * <p>Returns a vector quaternion (w = 0) representing the 3D cross product. Use this for
+   * geometric operations, not quaternion algebra.
    *
    * @param other the quaternion to compute vector cross product with
    * @return a new vector quaternion representing the 3D vector cross product
@@ -428,23 +403,10 @@ public final class Quaternion {
   }
 
   /**
-   * Computes the geodesic distance between this quaternion and another along the great circle on
-   * S³.
+   * Computes the geodesic distance between two unit quaternions.
    *
-   * <p>The geodesic distance is the angle between the quaternions, computed using the dot product.
-   * For unit quaternions, this represents the shortest angular distance on the 4D unit sphere.
-   *
-   * <p><strong>Mathematical Definition:</strong> For unit quaternions q₁ and q₂, the geodesic
-   * distance is 2 * arccos(|q₁ · q₂|), where · is the dot product. This represents the angle
-   * between the quaternions in 4D space.
-   *
-   * <p><strong>Properties:</strong>
-   *
-   * <ul>
-   *   <li>Distance is always in [0, 2π] radians
-   *   <li>Distance = 0 if and only if quaternions are identical
-   *   <li>Distance = 2π if and only if quaternions are antipodal (q₁ = -q₂)
-   * </ul>
+   * <p>Returns the angular distance on the 4D unit sphere: 2 * arccos(|q₁ · q₂|). Range: [0, π]
+   * radians.
    *
    * @param other the other quaternion
    * @return the geodesic distance in radians
@@ -527,7 +489,7 @@ public final class Quaternion {
                 + rotationVector[2] * rotationVector[2]);
 
     // Handle very small rotations (return identity)
-    if (angle < 1e-10) {
+    if (angle < EPSILON) {
       return Quaternion.ONE;
     }
 
@@ -550,9 +512,15 @@ public final class Quaternion {
    * @param q2 the second quaternion
    * @param t the interpolation parameter (0.0 = q1, 1.0 = q2)
    * @return a new quaternion interpolated between q1 and q2
-   * @throws IllegalArgumentException if t is not in [0, 1]
+   * @throws IllegalArgumentException if t is not in [0, 1] or either quaternion is null
    */
   public static Quaternion slerp(Quaternion q1, Quaternion q2, double t) {
+    if (q1 == null) {
+      throw new IllegalArgumentException("First quaternion cannot be null");
+    }
+    if (q2 == null) {
+      throw new IllegalArgumentException("Second quaternion cannot be null");
+    }
     if (t < 0.0 || t > 1.0) {
       throw new IllegalArgumentException("Interpolation parameter must be in [0, 1]");
     }
@@ -705,25 +673,13 @@ public final class Quaternion {
   }
 
   /**
-   * Converts this quaternion to its rotation vector representation. This extracts the axis-angle
-   * representation and returns the axis scaled by the angle.
+   * Converts this unit quaternion to a rotation vector (axis × angle).
    *
-   * <p>For unit quaternions, the rotation vector is the vector part scaled by 2*acos(w). This is
-   * useful for converting quaternions to 3D rotation vectors for mathematical operations.
-   *
-   * <p><strong>Important Note:</strong> This method is different from <code>log().getVector()
-   * </code>:
-   *
-   * <ul>
-   *   <li><code>toRotationVector()</code>: Returns the rotation vector (axis × angle) in 3D space
-   *   <li><code>log().getVector()</code>: Returns the rotation vector in the tangent space (Lie
-   *       algebra)
-   * </ul>
-   *
-   * <p>For Lie algebra operations (like in your perceptron), use <code>log().getVector()</code>.
-   * For geometric interpretations, use <code>toRotationVector()</code>.
+   * <p>Returns the axis scaled by the rotation angle. Different from log().getVector() which
+   * returns the Lie algebra representation.
    *
    * @return the rotation vector as a 3D array [x, y, z]
+   * @throws IllegalStateException if this quaternion is not normalized
    */
   public double[] toRotationVector() {
     if (!isUnit()) {
@@ -736,7 +692,7 @@ public final class Quaternion {
     double[] vector = getVector();
 
     // Handle the case where w is very close to 1 (small rotation)
-    if (Math.abs(w - 1.0) < NUMERICAL_STABILITY_THRESHOLD) {
+    if (Math.abs(w - 1.0) < EPSILON) {
       return new double[] {0.0, 0.0, 0.0};
     }
 
@@ -746,7 +702,7 @@ public final class Quaternion {
     // Normalize the vector part and scale by angle
     double vectorNorm =
         Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]);
-    if (vectorNorm < NUMERICAL_STABILITY_THRESHOLD) {
+    if (vectorNorm < EPSILON) {
       return new double[] {0.0, 0.0, 0.0};
     }
 

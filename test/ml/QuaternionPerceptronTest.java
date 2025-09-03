@@ -95,39 +95,26 @@ class QuaternionPerceptronTest {
     @DisplayName("Weights are reasonably near identity")
     void testWeightsNearIdentity() {
       // Use retry mechanism to ensure robust testing while maintaining reasonable complexity
-      boolean biasNearIdentity = false;
-      boolean actionNearIdentity = false;
+      boolean rotationNearIdentity = false;
 
       // Try up to 5 different random initializations to ensure robustness
       for (int attempt = 0; attempt < 5; attempt++) {
         QuaternionPerceptron newPerceptron = new QuaternionPerceptron(42L + attempt);
-        Quaternion newBias = newPerceptron.getRotation();
-        Quaternion newAction = newPerceptron.getRotation();
+        Quaternion rotation = newPerceptron.getRotation();
 
-        double biasDistance = newBias.subtract(Quaternion.ONE).norm();
-        double actionDistance = newAction.subtract(Quaternion.ONE).norm();
+        double rotationDistance = rotation.subtract(Quaternion.ONE).norm();
 
         // Use strict threshold for near-identity (as per original design)
-        if (biasDistance < 0.05) {
-          biasNearIdentity = true;
-        }
-        if (actionDistance < 0.05) {
-          actionNearIdentity = true;
-        }
-
-        // Early exit if both are near identity
-        if (biasNearIdentity && actionNearIdentity) {
+        if (rotationDistance < 0.05) {
+          rotationNearIdentity = true;
           break;
         }
       }
 
-      // Both weights should be near identity across multiple random initializations
+      // Rotation should be near identity across multiple random initializations
       assertTrue(
-          biasNearIdentity,
-          "Bias should be near identity (distance < 0.05) across multiple attempts");
-      assertTrue(
-          actionNearIdentity,
-          "Action should be near identity (distance < 0.05) across multiple attempts");
+          rotationNearIdentity,
+          "Rotation should be near identity (distance < 0.05) across multiple attempts");
     }
 
     @Test
@@ -137,14 +124,11 @@ class QuaternionPerceptronTest {
       for (int attempt = 0; attempt < 5; attempt++) {
         QuaternionPerceptron perceptron = new QuaternionPerceptron(42L + attempt);
 
-        Quaternion bias = perceptron.getRotation();
-        Quaternion action = perceptron.getRotation();
+        Quaternion rotation = perceptron.getRotation();
 
         // These should always be true regardless of random variation
-        assertTrue(bias.isUnit(), "Bias should always be unit length");
-        assertTrue(action.isUnit(), "Action should always be unit length");
-        assertFalse(bias.isZero(), "Bias should never be zero");
-        assertFalse(action.isZero(), "Action should never be zero");
+        assertTrue(rotation.isUnit(), "Rotation should always be unit length");
+        assertFalse(rotation.isZero(), "Rotation should never be zero");
       }
     }
   }
@@ -161,15 +145,12 @@ class QuaternionPerceptronTest {
     }
 
     @Test
-    @DisplayName("Bias and action weights are accessible")
+    @DisplayName("Rotation weight is accessible")
     void testWeightAccess() {
-      Quaternion bias = perceptron.getRotation();
-      Quaternion action = perceptron.getRotation();
+      Quaternion rotation = perceptron.getRotation();
 
-      assertNotNull(bias);
-      assertNotNull(action);
-      assertTrue(bias.isUnit());
-      assertTrue(action.isUnit());
+      assertNotNull(rotation);
+      assertTrue(rotation.isUnit());
     }
 
     @Test
@@ -474,6 +455,18 @@ class QuaternionPerceptronTest {
       // Rotation should remain unit
       assertTrue(perceptron.getRotation().isUnit());
     }
+
+    @Test
+    @DisplayName("Step method rejects invalid labels")
+    void testStepRejectsInvalidLabels() {
+      List<Quaternion> testInputs = Arrays.asList(Quaternion.ONE);
+      List<Integer> invalidLabels = Arrays.asList(2); // Invalid label
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> perceptron.step(testInputs, invalidLabels),
+          "Should reject invalid labels (not 0 or 1)");
+    }
   }
 
   @Nested
@@ -583,6 +576,40 @@ class QuaternionPerceptronTest {
           new QuaternionPerceptron.GradientFields(rotationGrad, rotationGrad);
 
       assertEquals(rotationGrad, fields.rotationGradient);
+    }
+  }
+
+  @Nested
+  @DisplayName("Label to Target Conversion")
+  class LabelToTargetTests {
+
+    private QuaternionPerceptron perceptron;
+
+    @BeforeEach
+    void setUp() {
+      perceptron = new QuaternionPerceptron(42L);
+    }
+
+    @Test
+    @DisplayName("Label 0 maps to identity quaternion")
+    void testLabel0MapsToIdentity() {
+      // Test through classify method which uses labelToTargetOrientation internally
+      Quaternion input = Quaternion.ONE;
+      int label = perceptron.classify(input);
+
+      // Identity input should be classified as 0 (closer to identity target)
+      assertEquals(0, label);
+    }
+
+    @Test
+    @DisplayName("Label 1 maps to 180 degree rotation")
+    void testLabel1MapsTo180DegreeRotation() {
+      // Test with 180 degree rotation around Z-axis
+      Quaternion input = new Quaternion(0.0, 0.0, 0.0, 1.0);
+      int label = perceptron.classify(input);
+
+      // 180 degree rotation should be classified as 1
+      assertEquals(1, label);
     }
   }
 }
